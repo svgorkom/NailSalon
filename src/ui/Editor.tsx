@@ -126,7 +126,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
               {target === null ? 'Tik op een nagel' : target === 'all' ? 'Alle nagels' : FINGER_LABELS[target]}
             </p>
             <label className="toggle">
-              <input type="checkbox" checked={allNails} onChange={(event) => setAllNails(event.target.checked)} />
+              <input type="checkbox" role="switch" className="switch" checked={allNails} onChange={(event) => setAllNails(event.target.checked)} />
               Alle nagels
             </label>
           </div>
