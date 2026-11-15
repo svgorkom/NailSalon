@@ -15,7 +15,7 @@ Design fingernails on a realistic 3D hand, in the browser. React + React Three F
 Requires Visual Studio 2022 or newer with the **Node.js development** workload (the same Node.js setup TriominosTheGame needs; no separate Node.js install).
 
 1. Open `NailSalon.slnx`. Visual Studio runs `npm install` the first time (see the Output window, *npm*).
-2. Press F5. Visual Studio starts `npm run dev` and opens Chrome on http://localhost:5173.
+2. Press F5. Visual Studio runs `npm run dev` in a terminal window; Vite then opens the browser on http://localhost:5173 (the first start takes a few seconds while Vite bundles). Stop with Shift+F5 or by closing that window.
 3. Tests appear in Test Explorer (Vitest).
 
 ### Without Visual Studio or admin rights

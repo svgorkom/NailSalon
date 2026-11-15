@@ -3,8 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  // Fixed port: .vscode/launch.json (used by Visual Studio) opens this address.
-  server: { port: 5173, strictPort: true },
+  // F5 in Visual Studio only runs `npm run dev`; Vite opens the browser itself once the server is ready.
+  server: { port: 5173, strictPort: true, open: true },
   build: {
     // Three.js alone is about 750 kB minified (190 kB gzip); it is split off and cached.
     chunkSizeWarningLimit: 800,
