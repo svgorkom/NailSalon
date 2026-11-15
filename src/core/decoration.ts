@@ -104,9 +104,14 @@ export function assertSticker(sticker: Sticker): void {
 /** Throws RangeError unless the gem is valid. */
 export function assertGem(gem: Gem): void {
   if (gem.id.length === 0) throw new RangeError('Gem id must not be empty.');
-  if (!GEM_KINDS.includes(gem.kind)) throw new RangeError('Unknown gem.');
+  assertGemKind(gem.kind);
   assertGemLook(gem);
   assertGemPlacement(gem);
+}
+
+/** Throws RangeError unless the kind is one of the gem kinds. */
+export function assertGemKind(kind: GemKind): void {
+  if (!GEM_KINDS.includes(kind)) throw new RangeError('Unknown gem.');
 }
 
 /** Throws RangeError unless the colour is valid and `clear` is a boolean. */

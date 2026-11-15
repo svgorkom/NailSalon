@@ -267,11 +267,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                 ) : (
                   <GemTools
                     kind={gemKind}
-                    onKindChange={(kind) => {
-                      // A new kind starts a new gem, so colour and clearness no longer change the last one.
-                      setGemKind(kind);
-                      setSelectedItem(null);
-                    }}
+                    onKindChange={setGemKind}
                     color={gemColorShown}
                     onColorChange={onGemColor}
                     clear={gemClearShown}

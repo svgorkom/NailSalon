@@ -186,12 +186,18 @@ interface GemToolsProps {
 }
 
 export function GemTools({ kind, onKindChange, color, onColorChange, clear, onClearChange, selected, canClear, send, target, onRemoved }: GemToolsProps) {
+  // The kind shown is the selected gem's; choosing another changes that gem, and is also the kind of the next one.
+  const shownKind = selected?.kind ?? kind;
+  const chooseKind = (each: GemKind) => {
+    onKindChange(each);
+    if (selected !== undefined && target !== null) send({ type: 'setGemKind', target, id: selected.id, kind: each });
+  };
   return (
     <fieldset className="tool">
       <legend>Steentjes</legend>
       <div className="gem-kinds">
         {GEM_KINDS.map((each) => (
-          <button key={each} type="button" className="choice gem-kind" aria-pressed={selected === undefined && each === kind} onClick={() => onKindChange(each)}>
+          <button key={each} type="button" className="choice gem-kind" aria-pressed={each === shownKind} onClick={() => chooseKind(each)}>
             <GemIcon kind={each} color={color} />
             {GEM_LABELS[each]}
           </button>
@@ -205,7 +211,7 @@ export function GemTools({ kind, onKindChange, color, onColorChange, clear, onCl
         <input type="checkbox" role="switch" className="switch" checked={clear} onChange={(event) => onClearChange(event.target.checked)} />
         Doorzichtig
       </label>
-      <p className="hint">{selected === undefined ? 'Kies een vorm en een kleur. Tik op de nagel om te plakken.' : 'Dit steentje is gekozen: pas het hierboven of hieronder aan, of sleep het.'}</p>
+      <p className="hint">{selected === undefined ? 'Kies een vorm en een kleur. Tik op de nagel om te plakken.' : 'Dit steentje is gekozen: pas de vorm, kleur of grootte aan, of sleep het.'}</p>
       <PlacedActions
         selected={selected}
         minSize={MIN_GEM_SIZE}

@@ -1,11 +1,13 @@
 import {
   assertFrenchTip,
   assertGem,
+  assertGemKind,
   assertGemLook,
   assertGemPlacement,
   assertPlacement,
   type FrenchTip,
   type Gem,
+  type GemKind,
   type GemLook,
   assertSticker,
   assertStroke,
@@ -38,6 +40,8 @@ export type Command =
   | { readonly type: 'updateGem'; readonly target: Target; readonly id: string; readonly placement: StickerPlacement }
   /** Changes colour and clearness of a gem; only the nails that have it change. */
   | { readonly type: 'styleGem'; readonly target: Target; readonly id: string; readonly look: GemLook }
+  /** Changes the kind of a gem; only the nails that have it change. */
+  | { readonly type: 'setGemKind'; readonly target: Target; readonly id: string; readonly kind: GemKind }
   | { readonly type: 'removeGem'; readonly target: Target; readonly id: string }
   | { readonly type: 'clearGems'; readonly target: Target }
   | { readonly type: 'rename'; readonly name: string };
@@ -116,6 +120,9 @@ export function apply(design: Design, command: Command): Design {
       const look = { color: command.look.color.toLowerCase(), clear: command.look.clear };
       return updateItems(design, command.target, 'gems', command.id, (gems) => gems.map((gem) => (gem.id === command.id ? { ...gem, ...look } : gem)));
     }
+    case 'setGemKind':
+      assertGemKind(command.kind);
+      return updateItems(design, command.target, 'gems', command.id, (gems) => gems.map((gem) => (gem.id === command.id ? { ...gem, kind: command.kind } : gem)));
     case 'removeGem':
       return updateItems(design, command.target, 'gems', command.id, (gems) => gems.filter(({ id }) => id !== command.id));
     case 'clearGems':

@@ -209,6 +209,15 @@ describe('gems', () => {
     expect(() => apply(placed, { type: 'styleGem', target: 'all', id: 'nope', look: { color: '#ff0000', clear: true } })).toThrow(RangeError);
   });
 
+  it('changes the kind of a gem, keeping its place and look', () => {
+    const placed = apply(createDesign('Test'), { type: 'addGem', target: 'all', gem });
+    const next = apply(placed, { type: 'setGemKind', target: 'all', id: 'g1', kind: 'star' });
+
+    expect(next.nails.little.gems[0]).toEqual({ ...placed.nails.little.gems[0], kind: 'star' });
+    expect(() => apply(placed, { type: 'setGemKind', target: 'all', id: 'g1', kind: 'ruby' as Gem['kind'] })).toThrow(RangeError);
+    expect(() => apply(placed, { type: 'setGemKind', target: 'all', id: 'nope', kind: 'star' })).toThrow(RangeError);
+  });
+
   it('removes one gem and clears all, and clearing nothing records nothing', () => {
     const two = apply(apply(createDesign('Test'), { type: 'addGem', target: 'thumb', gem }), { type: 'addGem', target: 'thumb', gem: { ...gem, id: 'g2' } });
 
