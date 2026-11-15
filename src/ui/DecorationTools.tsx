@@ -92,7 +92,7 @@ export function StickerTools({ kind, onKindChange, selected, canClear, send, tar
         ))}
       </div>
       <p className="hint">Tik op de nagel om te plakken. Sleep een sticker om hem te verschuiven.</p>
-      <div className="choices">
+      <div className="actions">
         <button type="button" disabled={selected === undefined} onClick={() => adjust({ size: (selected?.size ?? 0) / SIZE_STEP })}>
           Kleiner
         </button>

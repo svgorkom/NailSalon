@@ -1,6 +1,6 @@
 import { readSetting, writeSetting } from './storage';
 
-export const DEFAULT_TOOLS_WIDTH = 288;
+export const DEFAULT_TOOLS_WIDTH = 320;
 export const MIN_TOOLS_WIDTH = 240;
 /** The tools panel never takes more than this share of the editor, so the hand stays visible. */
 const MAX_SHARE = 0.6;

@@ -1,5 +1,5 @@
 import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
+import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINGERS, FINISHES, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
 import { NailPaint } from '../scene/nailPaint';
 import { ColorTool, DrawTools, StickerTools } from './DecorationTools';
 import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
@@ -12,7 +12,7 @@ const HandScene = lazy(() => import('../scene/HandScene').then((module) => ({ de
 
 type Mode = 'look' | 'draw' | 'sticker';
 
-const MODE_LABELS: Readonly<Record<Mode, string>> = { look: 'Kleur', draw: 'Tekenen', sticker: 'Stickers' };
+const MODE_LABELS: Readonly<Record<Mode, string>> = { look: '💅 Lak', draw: '✏️ Tekenen', sticker: '⭐ Stickers' };
 
 type Action = { readonly type: 'command'; readonly command: Command } | { readonly type: 'undo' } | { readonly type: 'redo' };
 
@@ -56,6 +56,9 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const padFinger = selected ?? (allNails ? 'middle' : null);
   const padNail = padFinger === null ? undefined : design.nails[padFinger];
   const modeLabelId = useId();
+  /** Whether a choice is the current one: for one nail its value, for all nails only if every nail has it. */
+  const shown = <K extends 'shape' | 'color' | 'finish'>(key: K, value: Nail[K]): boolean =>
+    target === null ? false : target === 'all' ? FINGERS.every((finger) => design.nails[finger][key] === value) : design.nails[target][key] === value;
 
   // Before the browser paints, so the nail never shows a stale texture for one frame.
   useLayoutEffect(() => paint.sync(design), [paint, design]);
@@ -107,151 +110,161 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
         onKeyDown={onResizeKey}
       />
       <aside className="tools panel" aria-label="Gereedschap">
-        <div className="row">
-          <button type="button" onClick={() => dispatch({ type: 'undo' })} disabled={!canUndo(history)}>
-            ↶ Ongedaan
-          </button>
-          <button type="button" onClick={() => dispatch({ type: 'redo' })} disabled={!canRedo(history)}>
-            ↷ Opnieuw
-          </button>
-        </div>
-        <label className="row">
-          <input type="checkbox" checked={allNails} onChange={(event) => setAllNails(event.target.checked)} />
-          Alle nagels tegelijk
-        </label>
-        <p className="status" role="status">
-          {target === null ? 'Tik op een nagel om te beginnen.' : target === 'all' ? 'Alle nagels' : FINGER_LABELS[target]}
-        </p>
-        <div className="choices" role="group" aria-labelledby={modeLabelId}>
-          <span id={modeLabelId} className="visually-hidden">
-            Wat wil je doen?
-          </span>
-          {(Object.keys(MODE_LABELS) as Mode[]).map((name) => (
-            <button key={name} type="button" className="choice" aria-pressed={name === mode} onClick={() => setMode(name)}>
-              {MODE_LABELS[name]}
-            </button>
-          ))}
-        </div>
-        {mode === 'look' ? (
-          <>
-          <fieldset disabled={target === null}>
-            <legend>Vorm</legend>
-            <div className="choices">
-              {NAIL_SHAPES.map((shape) => (
-                <button key={shape} type="button" className="choice" onClick={() => target && send({ type: 'setShape', target, shape })}>
-                  {SHAPE_LABELS[shape]}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset disabled={target === null}>
-            <legend>Lengte</legend>
-            <input
-              type="range"
-              className="length"
-              min={0}
-              max={1}
-              step={0.1}
-              value={lengthShown}
-              aria-label="Lengte van de nagel"
-              onChange={(event) => target && send({ type: 'setLength', target, length: Number(event.target.value) })}
-            />
-          </fieldset>
-          <fieldset disabled={target === null}>
-            <legend>Kleur</legend>
-            <div className="swatches">
-              {PALETTE.map(({ color, name }) => (
-                <button
-                  key={color}
-                  type="button"
-                  className="swatch"
-                  style={{ background: color }}
-                  title={name}
-                  aria-label={name}
-                  onClick={() => target && send({ type: 'setColor', target, color })}
-                />
-              ))}
-            </div>
-          </fieldset>
-          <fieldset disabled={target === null}>
-            <legend>Afwerking</legend>
-            <div className="choices">
-              {FINISHES.map((finish) => (
-                <button key={finish} type="button" className="choice" onClick={() => target && send({ type: 'setFinish', target, finish })}>
-                  {FINISH_LABELS[finish]}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          </>
-        ) : (
-          <>
-            <NailPad
-              finger={padFinger}
-              target={target}
-              design={design}
-              paint={paint}
-              tool={mode === 'sticker' ? 'sticker' : eraser ? 'eraser' : 'brush'}
-              color={toolColor}
-              brushSize={brushSize}
-              stickerKind={stickerKind}
-              selectedSticker={selectedSticker}
-              onCommand={send}
-              onSelectSticker={setSelectedSticker}
-              newStickerId={() => `s${(stickerCount.current += 1)}`}
-            />
-            <fieldset disabled={target === null} className="bare">
-              <ColorTool color={toolColor} onChange={setToolColor} />
-              {mode === 'draw' ? (
-                <DrawTools
-                  eraser={eraser}
-                  onEraserChange={setEraser}
-                  size={brushSize}
-                  onSizeChange={setBrushSize}
-                  canClear={padNail !== undefined && padNail.strokes.length > 0}
-                  onClear={() => target && send({ type: 'clearDrawing', target })}
-                />
-              ) : (
-                <StickerTools
-                  kind={stickerKind}
-                  onKindChange={setStickerKind}
-                  selected={padNail?.stickers.find(({ id }) => id === selectedSticker)}
-                  canClear={padNail !== undefined && padNail.stickers.length > 0}
-                  send={send}
-                  target={target}
-                  onRemoved={() => setSelectedSticker(null)}
-                />
-              )}
-            </fieldset>
-          </>
-        )}
-        <fieldset>
-          <legend>Huidskleur</legend>
-          <div className="swatches">
-            {SKIN_TONES.map(({ id, name, color }) => (
-              <button
-                key={id}
-                type="button"
-                className="swatch"
-                style={{ background: color }}
-                title={name}
-                aria-label={name}
-                aria-pressed={id === skin}
-                onClick={() => onSkinChange(id)}
-              />
-            ))}
-          </div>
-        </fieldset>
-        <fieldset>
-          <legend>Thema</legend>
-          <div className="choices">
-            {THEMES.map((name) => (
-              <button key={name} type="button" className="choice" aria-pressed={name === theme} onClick={() => onThemeChange(name)}>
-                {THEME_LABELS[name]}
+        <div className="tools-head">
+          <div className="tabs" role="group" aria-labelledby={modeLabelId}>
+            <span id={modeLabelId} className="visually-hidden">
+              Wat wil je doen?
+            </span>
+            {(Object.keys(MODE_LABELS) as Mode[]).map((name) => (
+              <button key={name} type="button" className="choice" aria-pressed={name === mode} onClick={() => setMode(name)}>
+                {MODE_LABELS[name]}
               </button>
             ))}
           </div>
-        </fieldset>
+          <div className="row target">
+            <p className="status" role="status">
+              {target === null ? 'Tik op een nagel' : target === 'all' ? 'Alle nagels' : FINGER_LABELS[target]}
+            </p>
+            <label className="toggle">
+              <input type="checkbox" checked={allNails} onChange={(event) => setAllNails(event.target.checked)} />
+              Alle nagels
+            </label>
+          </div>
+          <div className="row">
+            <button type="button" className="grow" onClick={() => dispatch({ type: 'undo' })} disabled={!canUndo(history)}>
+              ↶ Ongedaan
+            </button>
+            <button type="button" className="grow" onClick={() => dispatch({ type: 'redo' })} disabled={!canRedo(history)}>
+              ↷ Opnieuw
+            </button>
+          </div>
+        </div>
+        <div className="tools-body">
+          {mode === 'look' ? (
+            <>
+              <fieldset disabled={target === null}>
+                <legend>Vorm</legend>
+                <div className="choices">
+                  {NAIL_SHAPES.map((shape) => (
+                    <button key={shape} type="button" className="choice" aria-pressed={shown('shape', shape)} onClick={() => target && send({ type: 'setShape', target, shape })}>
+                      {SHAPE_LABELS[shape]}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset disabled={target === null}>
+                <legend>Lengte</legend>
+                <input
+                  type="range"
+                  className="length"
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  value={lengthShown}
+                  aria-label="Lengte van de nagel"
+                  onChange={(event) => target && send({ type: 'setLength', target, length: Number(event.target.value) })}
+                />
+              </fieldset>
+              <fieldset disabled={target === null}>
+                <legend>Kleur</legend>
+                <div className="swatches">
+                  {PALETTE.map(({ color, name }) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className="swatch"
+                      style={{ background: color }}
+                      title={name}
+                      aria-label={name}
+                      aria-pressed={shown('color', color)}
+                      onClick={() => target && send({ type: 'setColor', target, color })}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset disabled={target === null}>
+                <legend>Afwerking</legend>
+                <div className="choices">
+                  {FINISHES.map((finish) => (
+                    <button key={finish} type="button" className="choice" aria-pressed={shown('finish', finish)} onClick={() => target && send({ type: 'setFinish', target, finish })}>
+                      {FINISH_LABELS[finish]}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            </>
+          ) : (
+            <>
+              <NailPad
+                finger={padFinger}
+                target={target}
+                design={design}
+                paint={paint}
+                tool={mode === 'sticker' ? 'sticker' : eraser ? 'eraser' : 'brush'}
+                color={toolColor}
+                brushSize={brushSize}
+                stickerKind={stickerKind}
+                selectedSticker={selectedSticker}
+                onCommand={send}
+                onSelectSticker={setSelectedSticker}
+                newStickerId={() => `s${(stickerCount.current += 1)}`}
+              />
+              <fieldset disabled={target === null} className="bare">
+                <ColorTool color={toolColor} onChange={setToolColor} />
+                {mode === 'draw' ? (
+                  <DrawTools
+                    eraser={eraser}
+                    onEraserChange={setEraser}
+                    size={brushSize}
+                    onSizeChange={setBrushSize}
+                    canClear={padNail !== undefined && padNail.strokes.length > 0}
+                    onClear={() => target && send({ type: 'clearDrawing', target })}
+                  />
+                ) : (
+                  <StickerTools
+                    kind={stickerKind}
+                    onKindChange={setStickerKind}
+                    selected={padNail?.stickers.find(({ id }) => id === selectedSticker)}
+                    canClear={padNail !== undefined && padNail.stickers.length > 0}
+                    send={send}
+                    target={target}
+                    onRemoved={() => setSelectedSticker(null)}
+                  />
+                )}
+              </fieldset>
+            </>
+          )}
+          <details className="settings">
+            <summary>⚙️ Instellingen</summary>
+            <fieldset>
+              <legend>Huidskleur</legend>
+              <div className="swatches">
+                {SKIN_TONES.map(({ id, name, color }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="swatch"
+                    style={{ background: color }}
+                    title={name}
+                    aria-label={name}
+                    aria-pressed={id === skin}
+                    onClick={() => onSkinChange(id)}
+                  />
+                ))}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Thema</legend>
+              <div className="choices">
+                {THEMES.map((name) => (
+                  <button key={name} type="button" className="choice" aria-pressed={name === theme} onClick={() => onThemeChange(name)}>
+                    {THEME_LABELS[name]}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          </details>
+        </div>
       </aside>
     </div>
   );

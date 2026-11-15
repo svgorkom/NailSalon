@@ -206,14 +206,20 @@ main {
 
 .editor {
   display: grid;
-  grid-template-columns: 1fr 0.6rem var(--tools-width, 18rem);
+  /*
+   * minmax(0, 1fr): a plain 1fr never gets narrower than the canvas inside it, so a wider tools panel
+   * pushed itself off the right edge. min(…, 60%) also keeps a stored width inside a smaller window.
+   */
+  grid-template-columns: minmax(0, 1fr) 0.6rem min(var(--tools-width, 20rem), 60%);
   height: 100%;
 }
 
 /* The canvas is transparent: the hand lies on the same glowing cloth as the loading screen of the game. */
 .viewer {
   position: relative;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
   background: radial-gradient(ellipse at 50% 45%, var(--felt-light) 0%, var(--felt) 38%, var(--page) 100%);
   touch-action: none;
 }
@@ -239,10 +245,73 @@ main {
 .tools {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem;
-  overflow-y: auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   border-width: 0 0 0 1px;
+}
+
+/* Mode, target and undo stay in view; only the body scrolls. */
+.tools-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.35);
+}
+
+.tools-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  overflow-y: auto;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.tabs .choice {
+  padding: 0.55rem 0.25rem;
+  white-space: nowrap;
+}
+
+.target {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.toggle {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.grow {
+  flex: 1;
+  padding-inline: 0.5rem;
+}
+
+.settings > summary {
+  cursor: pointer;
+  padding: 0.4rem 0;
+  font-family: var(--title-font);
+  font-size: 1.15rem;
+  font-weight: var(--title-weight);
+  color: var(--accent-light);
+}
+
+.settings[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .row {
@@ -317,11 +386,27 @@ input[type='checkbox'] {
   accent-color: var(--accent);
 }
 
-.swatches,
-.choices {
+.swatches {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+/* Even columns, so the buttons line up however wide the panel is. */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.4rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.choices > button {
+  padding-inline: 0.5rem;
 }
 
 .swatch {
@@ -364,8 +449,16 @@ input[type='checkbox'] {
   }
 
   .tools {
-    max-height: 45dvh;
+    max-height: 50dvh;
     border-width: 1px 0 0;
+  }
+
+  .tools-head {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .tools-body {
+    padding: 0.6rem 0.75rem 0.75rem;
   }
 
   .title {
@@ -390,8 +483,10 @@ input[type='checkbox'] {
 
 .pad-canvas {
   display: block;
-  width: 100%;
+  /* At most 40% of the screen high (the texture is 512 × 640), so the tools below stay reachable. */
+  width: min(100%, 40dvh * 0.8);
   height: auto;
+  margin: 0 auto;
   border: 1px solid rgba(var(--accent-rgb), 0.5);
   border-radius: 0.75rem;
   background: var(--field);
@@ -460,10 +555,7 @@ fieldset.bare {
 
 @media (max-width: 720px), (orientation: portrait) {
   .pad-canvas {
-    width: auto;
-    max-width: 100%;
-    max-height: 30dvh;
-    margin: 0 auto;
+    width: min(100%, 30dvh * 0.8);
   }
 }
 
