@@ -1,4 +1,5 @@
 import { type Design, type Finger, FINGERS, type FrenchTip, type Gem, type Nail, type Sticker, type Stroke } from '../core';
+import { GEM_OUTLINES } from './gemOutlines';
 import { STICKER_PATHS } from './stickerShapes';
 
 /** Size of the texture of one nail. Positions in the design are fractions of these. */
@@ -79,11 +80,18 @@ export function paintGem(ctx: CanvasRenderingContext2D, gem: Gem): void {
   ctx.fillStyle = gem.color;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
   ctx.lineWidth = Math.max(1, radius / 10);
+  const outline = GEM_OUTLINES[gem.kind];
   if (gem.kind === 'heart') {
     ctx.save();
     ctx.scale(radius / 50, radius / 50);
     ctx.fill(stickerPath('heart'));
     ctx.restore();
+  } else if (outline !== undefined) {
+    // The outline has y towards the free edge, which is up on the pad.
+    ctx.beginPath();
+    outline.forEach(([x, y], index) => (index === 0 ? ctx.moveTo(2 * radius * x, -2 * radius * y) : ctx.lineTo(2 * radius * x, -2 * radius * y)));
+    ctx.closePath();
+    ctx.fill();
   } else {
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);

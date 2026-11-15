@@ -39,8 +39,8 @@ export interface Sticker {
 /** The part of a sticker or gem that can change after it was placed. */
 export type StickerPlacement = Pick<Sticker, 'x' | 'y' | 'size' | 'rotation'>;
 
-/** Rhinestones and pearls glued on the nail. Unlike stickers they are 3D objects on top of the nail. */
-export const GEM_KINDS = ['diamond', 'pearl', 'heart'] as const;
+/** Rhinestones in several cuts and pearls glued on the nail. Unlike stickers they are 3D objects on top of the nail. */
+export const GEM_KINDS = ['diamond', 'pearl', 'heart', 'square', 'drop', 'star'] as const;
 export type GemKind = (typeof GEM_KINDS)[number];
 
 export const MIN_GEM_SIZE = 0.06;

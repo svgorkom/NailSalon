@@ -29,7 +29,7 @@ Per selected nail, or for all nails at once:
 - **Finish:** gloss, matte, glitter, metallic, chrome.
 - **Patterns:** French tip (colour and depth, with a curved smile line), gradient (ombré), dots, stripes; with their own colours.
 - **Stickers:** hearts, stars, flowers and similar; position, size and rotation on the nail.
-- **Gems:** 3D rhinestones and pearls glued on the nail (diamond, pearl, heart); position, size, rotation, colour, and solid or clear (see-through); colour and clearness can be changed after placing.
+- **Gems:** 3D rhinestones and pearls glued on the nail (diamond, pearl, heart, square, drop, star); position, size, rotation, colour, and solid or clear (see-through); colour and clearness can be changed after placing. The gem tools have their own colour choice, separate from the brush and sticker colour.
 - **Free drawing:** brush with size and colour, eraser.
 - Undo and redo for every change; "clear nail" and "clear all".
 

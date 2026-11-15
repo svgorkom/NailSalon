@@ -1,5 +1,6 @@
 import { type BufferGeometry, ExtrudeGeometry, LatheGeometry, Quaternion, Shape, SphereGeometry, Vector2, Vector3 } from 'three';
-import type { GemKind } from '../core';
+import { GEM_KINDS, type GemKind } from '../core';
+import { GEM_OUTLINES, type Outline } from './gemOutlines';
 import type { SurfaceFrame } from './nailGeometry';
 
 /**
@@ -25,7 +26,16 @@ function pearl(): BufferGeometry {
   return new SphereGeometry(0.5, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(Math.PI / 2).scale(1, 1, 0.8);
 }
 
-/** A heart-shaped rhinestone with bevelled, faceted edges. The point faces the cuticle, as the heart sticker on the pad. */
+/** Bevel of the faceted rhinestones: it widens the outline by `BEVEL_SIZE` on every side. */
+const BEVEL_THICKNESS = 0.16;
+const BEVEL_SIZE = 0.1;
+
+/** A rhinestone cut from a flat shape, with bevelled, faceted edges. The bevel widens it, so the shape starts smaller. */
+function faceted(shape: Shape): BufferGeometry {
+  return new ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: true, bevelThickness: BEVEL_THICKNESS, bevelSize: BEVEL_SIZE, bevelSegments: 1, curveSegments: 10 }).translate(0, 0, BEVEL_THICKNESS);
+}
+
+/** A heart-shaped rhinestone. The point faces the cuticle, as the heart sticker on the pad. */
 function heart(): BufferGeometry {
   const shape = new Shape();
   shape.moveTo(0, -0.38);
@@ -33,12 +43,27 @@ function heart(): BufferGeometry {
   shape.bezierCurveTo(-0.05, 0.33, 0, 0.26, 0, 0.2);
   shape.bezierCurveTo(0, 0.26, 0.05, 0.33, 0.14, 0.36);
   shape.bezierCurveTo(0.36, 0.42, 0.5, 0, 0, -0.38);
-  return new ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.16, bevelSize: 0.1, bevelSegments: 1, curveSegments: 10 }).translate(0, 0, 0.16);
+  return faceted(shape);
+}
+
+/** A rhinestone in the shape of a flat outline: square, drop or star. Sharp corners bevel wider, so it is fitted to one unit. */
+function cut(outline: Outline): BufferGeometry {
+  const inset = 1 - 2 * BEVEL_SIZE;
+  const geometry = faceted(new Shape(outline.map(([x, y]) => new Vector2(x * inset, y * inset))));
+  geometry.computeBoundingBox();
+  const width = geometry.boundingBox ? geometry.boundingBox.max.x - geometry.boundingBox.min.x : 1;
+  return geometry.scale(1 / width, 1 / width, 1);
+}
+
+function geometryFor(kind: GemKind): BufferGeometry {
+  const outline = GEM_OUTLINES[kind];
+  if (outline !== undefined) return cut(outline);
+  return kind === 'diamond' ? diamond() : kind === 'pearl' ? pearl() : heart();
 }
 
 /** One geometry per gem kind, shared by all gems. The caller disposes them. */
 export function createGemGeometries(): Readonly<Record<GemKind, BufferGeometry>> {
-  return { diamond: diamond(), pearl: pearl(), heart: heart() };
+  return Object.fromEntries(GEM_KINDS.map((kind) => [kind, geometryFor(kind)])) as Record<GemKind, BufferGeometry>;
 }
 
 export interface GemMaterial {
@@ -54,10 +79,15 @@ export interface GemMaterial {
   readonly thickness: number;
 }
 
+const RHINESTONE: GemMaterial = { metalness: 0.35, roughness: 0.08, clearcoat: 1, iridescence: 0.6, sheen: 0, flatShading: true, transmission: 0, ior: 1.5, thickness: 0 };
+
 /** Rhinestones are foil-backed glass: coloured facets that catch the light with a hint of rainbow. Pearls glow softly. */
 export const GEM_MATERIALS: Readonly<Record<GemKind, GemMaterial>> = {
-  diamond: { metalness: 0.35, roughness: 0.08, clearcoat: 1, iridescence: 0.6, sheen: 0, flatShading: true, transmission: 0, ior: 1.5, thickness: 0 },
-  heart: { metalness: 0.35, roughness: 0.08, clearcoat: 1, iridescence: 0.6, sheen: 0, flatShading: true, transmission: 0, ior: 1.5, thickness: 0 },
+  diamond: RHINESTONE,
+  heart: RHINESTONE,
+  square: RHINESTONE,
+  drop: RHINESTONE,
+  star: RHINESTONE,
   pearl: { metalness: 0, roughness: 0.3, clearcoat: 1, iridescence: 0.8, sheen: 1, flatShading: false, transmission: 0, ior: 1.5, thickness: 0 },
 };
 
