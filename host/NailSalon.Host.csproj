@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NailSalon.Host</RootNamespace>
+    <!-- The web app (React, TypeScript, Vite) lives in the repository root; Vite builds it into wwwroot/ of this project. -->
+    <AppDir>$(MSBuildProjectDirectory)/../</AppDir>
+    <AppOutput>wwwroot/</AppOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="$(AppOutput)**" />
+  </ItemGroup>
+
+  <!--
+    Builds the web app with Vite before the C# build, then adds the output as web content.
+    The output is added inside the target because it does not exist yet when the project is evaluated.
+    Set SkipAppBuild=true to use an existing build.
+  -->
+  <Target Name="BuildApp" BeforeTargets="BeforeBuild" DependsOnTargets="InstallAppDependencies" Condition="'$(SkipAppBuild)' != 'true'">
+    <Exec Command="npm run build" WorkingDirectory="$(AppDir)" />
+  </Target>
+
+  <!--
+    Installs the packages when node_modules is missing or older than package-lock.json. npm writes
+    node_modules/.package-lock.json at the end of every install, so a changed lock file (a new package after a
+    pull) installs again instead of failing the build on a module that is not there.
+  -->
+  <Target Name="InstallAppDependencies" Inputs="$(AppDir)package-lock.json" Outputs="$(AppDir)node_modules/.package-lock.json" Condition="'$(SkipAppBuild)' != 'true'">
+    <Exec Command="npm install --no-audit --no-fund" WorkingDirectory="$(AppDir)" />
+  </Target>
+
+  <Target Name="IncludeApp" AfterTargets="BuildApp" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <Content Include="$(AppOutput)**" />
+    </ItemGroup>
+  </Target>
+
+</Project>
