@@ -151,6 +151,124 @@
   --vignette-rgb: 60, 76, 92;
 }
 
+/*
+ * NailSalon's own themes, festive and bright. Besides the colours they bring a decoration that lies on
+ * the cloth behind the hand (.viewer::before) and two emoji beside the title (.app-header).
+ */
+[data-theme='christmas'] {
+  --felt: #0f4a2e;
+  --felt-light: #1c6b44;
+  --page: #08190f;
+  --text: #f6f1e7;
+  --accent: #e5484d;
+  --accent-rgb: 229, 72, 77;
+  --accent-light: #ff9b9e;
+  --accent-dark: #b0161d;
+  --on-accent: #ffffff;
+  --panel-top: rgba(14, 44, 28, 0.8);
+  --panel-bottom: rgba(6, 24, 14, 0.85);
+  --panel-shine: rgba(235, 255, 240, 0.14);
+  --raised-top: rgba(28, 76, 50, 0.9);
+  --raised-bottom: rgba(14, 46, 30, 0.9);
+  --field: rgba(6, 26, 15, 0.9);
+  --vignette-rgb: 3, 12, 7;
+  --ornament-start: '🎄';
+  --ornament-end: '⛄';
+}
+
+[data-theme='sinterklaas'] {
+  --felt: #8a1020;
+  --felt-light: #b81e31;
+  --page: #2a0408;
+  --text: #fbeedc;
+  --accent: #e2b545;
+  --accent-rgb: 226, 181, 69;
+  --accent-light: #fbe39a;
+  --accent-dark: #b08422;
+  --on-accent: #3a0a0a;
+  --panel-top: rgba(70, 10, 18, 0.8);
+  --panel-bottom: rgba(40, 4, 9, 0.86);
+  --panel-shine: rgba(255, 228, 190, 0.14);
+  --raised-top: rgba(110, 20, 32, 0.9);
+  --raised-bottom: rgba(68, 10, 18, 0.9);
+  --field: rgba(44, 6, 11, 0.9);
+  --vignette-rgb: 20, 2, 4;
+  --ornament-start: '🐴';
+  --ornament-end: '🎁';
+}
+
+[data-theme='confetti'] {
+  --felt: #6a2bd1;
+  --felt-light: #9b5cf6;
+  --page: #1d0b3d;
+  --text: #fff7fd;
+  --accent: #ff4fa3;
+  --accent-rgb: 255, 79, 163;
+  --accent-light: #ffb0d6;
+  --accent-dark: #d61f7d;
+  --on-accent: #ffffff;
+  --panel-top: rgba(52, 20, 104, 0.8);
+  --panel-bottom: rgba(30, 10, 64, 0.86);
+  --panel-shine: rgba(255, 220, 250, 0.16);
+  --raised-top: rgba(88, 40, 160, 0.9);
+  --raised-bottom: rgba(56, 22, 112, 0.9);
+  --field: rgba(32, 12, 68, 0.9);
+  --vignette-rgb: 16, 5, 36;
+  --title-font: 'Playfair Display', Georgia, serif;
+  --title-spacing: 0.04em;
+  --ornament-start: '🎉';
+  --ornament-end: '🎈';
+}
+
+/* The second light theme: pink panels with plum text. */
+[data-theme='pink'] {
+  --felt: #f48fb8;
+  --felt-light: #ffd1e3;
+  --page: #ffe6f0;
+  --text: #4a1a33;
+  --accent: #d6336c;
+  --accent-rgb: 214, 51, 108;
+  --accent-light: #f06595;
+  --accent-dark: #a61e4d;
+  --on-accent: #ffffff;
+  --panel-top: rgba(255, 246, 250, 0.86);
+  --panel-bottom: rgba(255, 228, 240, 0.9);
+  --panel-shine: rgba(255, 255, 255, 0.75);
+  --panel-shadow: rgba(166, 30, 77, 0.2);
+  --raised-top: rgba(255, 255, 255, 0.95);
+  --raised-bottom: rgba(255, 224, 237, 0.95);
+  --field: rgba(255, 250, 252, 0.94);
+  --vignette-rgb: 200, 90, 140;
+  --title-font: 'Playfair Display', Georgia, serif;
+  --title-spacing: 0.06em;
+  --ornament-start: '💖';
+  --ornament-end: '🎀';
+}
+
+[data-theme='rainbow'] {
+  --felt: #2b2d6e;
+  --felt-light: #4b4fb0;
+  --page: #11112b;
+  --text: #fdfbff;
+  --accent: #ffd43b;
+  --accent-rgb: 255, 212, 59;
+  --accent-light: #fff3a8;
+  --accent-dark: #f59f00;
+  --on-accent: #241a00;
+  --panel-top: rgba(30, 30, 76, 0.8);
+  --panel-bottom: rgba(16, 16, 44, 0.86);
+  --panel-shine: rgba(230, 230, 255, 0.14);
+  --raised-top: rgba(52, 54, 120, 0.9);
+  --raised-bottom: rgba(30, 32, 80, 0.9);
+  --field: rgba(18, 18, 48, 0.9);
+  --vignette-rgb: 6, 6, 20;
+  --title-font: 'Playfair Display', Georgia, serif;
+  --title-spacing: 0.05em;
+  --ornament-start: '🌈';
+  --ornament-end: '🦄';
+  --rainbow: linear-gradient(90deg, #ff6b6b, #ffa94d, #ffe066, #69db7c, #4dabf7, #9775fa, #f783ac);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -182,6 +300,8 @@ body {
 .app-header {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.4rem 1rem;
   border-width: 0 0 1px;
   border-radius: 0;
@@ -623,4 +743,160 @@ fieldset.bare {
 .resizer:focus-visible {
   background: linear-gradient(90deg, transparent 25%, var(--accent) 25% 75%, transparent 75%);
   outline: none;
+}
+
+/* ---------- Decorations of the festive themes ---------- */
+
+/* The two emoji beside the title; the shared themes have none. */
+.app-header::before,
+.app-header::after {
+  content: var(--ornament-start, none);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.app-header::after {
+  content: var(--ornament-end, none);
+}
+
+/*
+ * The decoration behind the hand. It comes before the canvas, so the hand lies on top of it.
+ * Falling layers are one tile taller than the viewer and move exactly one tile, so the loop is seamless;
+ * they only move with transform, which the GPU does without repainting.
+ */
+.viewer::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Kerst: snow in two sizes. */
+[data-theme='christmas'] .viewer::before {
+  content: '';
+  top: -240px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Ccircle cx='12' cy='30' r='3.5' fill='white' opacity='0.9'/%3E%3Ccircle cx='70' cy='8' r='2' fill='white' opacity='0.6'/%3E%3Ccircle cx='130' cy='50' r='2.5' fill='white' opacity='0.8'/%3E%3Ccircle cx='200' cy='22' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='30' cy='110' r='1.8' fill='white' opacity='0.6'/%3E%3Ccircle cx='95' cy='95' r='3' fill='white' opacity='0.85'/%3E%3Ccircle cx='170' cy='130' r='2.2' fill='white' opacity='0.7'/%3E%3Ccircle cx='225' cy='90' r='3' fill='white' opacity='0.8'/%3E%3Ccircle cx='55' cy='170' r='2.6' fill='white' opacity='0.75'/%3E%3Ccircle cx='140' cy='190' r='1.6' fill='white' opacity='0.5'/%3E%3Ccircle cx='210' cy='215' r='3.2' fill='white' opacity='0.9'/%3E%3Ccircle cx='10' cy='225' r='1.5' fill='white' opacity='0.5'/%3E%3Ccircle cx='110' cy='150' r='1.4' fill='white' opacity='0.45'/%3E%3Ccircle cx='180' cy='60' r='1.2' fill='white' opacity='0.4'/%3E%3Ccircle cx='80' cy='230' r='2' fill='white' opacity='0.6'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  filter: blur(0.6px);
+  animation: fall-240 14s linear infinite;
+}
+
+/* Sinterklaas: pepernoten being thrown, and a few golden stars. */
+[data-theme='sinterklaas'] .viewer::before {
+  content: '';
+  top: -240px;
+  background-image:
+    radial-gradient(circle at 40% 35%, #d9a066 0 2px, #9a5a26 5px, transparent 6px),
+    radial-gradient(circle at 40% 35%, #e0aa70 0 2px, #8a4e1e 4px, transparent 5px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cpath d='M60 40l3 7 8 1-6 5 2 8-7-4-7 4 2-8-6-5 8-1z' fill='%23e2b545' opacity='.75'/%3E%3Cpath d='M180 150l2 5 6 1-4 4 1 6-5-3-5 3 1-6-4-4 6-1z' fill='%23fbe39a' opacity='.6'/%3E%3C/svg%3E");
+  background-size:
+    120px 120px,
+    80px 80px,
+    240px 240px;
+  background-position:
+    30px 10px,
+    5px 50px,
+    0 0;
+  animation: fall-240 10s linear infinite;
+}
+
+/* Confetti: snippets and streamers in every colour, tumbling down. */
+[data-theme='confetti'] .viewer::before {
+  content: '';
+  top: -200px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect x='20' y='14' width='10' height='5' rx='1' fill='%23ffd43b' transform='rotate(25 25 16)'/%3E%3Crect x='120' y='30' width='9' height='5' rx='1' fill='%2338d9a9' transform='rotate(-40 124 32)'/%3E%3Ccircle cx='80' cy='70' r='4' fill='%23ff6b6b'/%3E%3Crect x='160' y='90' width='10' height='5' rx='1' fill='%234dabf7' transform='rotate(60 165 92)'/%3E%3Ccircle cx='40' cy='120' r='3.5' fill='%23ffa94d'/%3E%3Crect x='100' y='140' width='10' height='5' rx='1' fill='%23ff4fa3' transform='rotate(-15 105 142)'/%3E%3Cpath d='M150 160q5-6 10 0t10 0' stroke='%23ffe066' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M10 175q5-6 10 0t10 0' stroke='%23b197fc' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='185' cy='15' r='3' fill='%23ffffff'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  animation: fall-200 8s linear infinite;
+}
+
+/* Roze: hearts and sparkles that float up. */
+[data-theme='pink'] .viewer::before {
+  content: '';
+  bottom: -220px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cpath d='M40 60c-6-8-18-4-16 5 1 6 16 15 16 15s15-9 16-15c2-9-10-13-16-5z' fill='%23ffffff' opacity='.7'/%3E%3Cpath d='M160 150c-4-6-13-3-12 4 1 4 12 11 12 11s11-7 12-11c1-7-8-10-12-4z' fill='%23d6336c' opacity='.45'/%3E%3Cpath d='M150 40l3 9 9 3-9 3-3 9-3-9-9-3 9-3z' fill='%23ffffff' opacity='.9'/%3E%3Cpath d='M60 170l2 6 6 2-6 2-2 6-2-6-6-2 6-2z' fill='%23ffffff' opacity='.8'/%3E%3Cpath d='M100 105l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z' fill='%23f06595' opacity='.7'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  animation:
+    rise-220 16s linear infinite,
+    twinkle 2.4s ease-in-out infinite alternate;
+}
+
+/* Regenboog: a big soft rainbow arc behind the hand. */
+[data-theme='rainbow'] .viewer::before {
+  content: '';
+  opacity: 0.55;
+  background: radial-gradient(
+    circle at 50% 105%,
+    transparent 0 34%,
+    #9775fa 34% 37%,
+    #4dabf7 37% 40%,
+    #69db7c 40% 43%,
+    #ffe066 43% 46%,
+    #ffa94d 46% 49%,
+    #ff6b6b 49% 52%,
+    transparent 52%
+  );
+  filter: blur(2px);
+}
+
+/* The rainbow theme paints the title and every chosen option in all colours. */
+[data-theme='rainbow'] .title {
+  background: var(--rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+[data-theme='rainbow'] .choice[aria-pressed='true'],
+[data-theme='rainbow'] .switch:checked {
+  color: #1b1b3a;
+  border-color: #ffffff;
+  background: var(--rainbow);
+}
+
+/* Confetti is the extra playful one: round buttons that wiggle and a tilted title. */
+[data-theme='confetti'] button:not(.swatch) {
+  border-radius: 999px;
+}
+
+[data-theme='confetti'] button:hover:not(:disabled) {
+  transform: rotate(-3deg) scale(1.05);
+}
+
+[data-theme='confetti'] .title {
+  transform: rotate(-3deg);
+}
+
+@keyframes fall-240 {
+  to {
+    transform: translateY(240px);
+  }
+}
+
+@keyframes fall-200 {
+  to {
+    transform: translateY(200px);
+  }
+}
+
+@keyframes rise-220 {
+  to {
+    transform: translateY(-220px);
+  }
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viewer::before {
+    animation: none !important;
+  }
+
+  [data-theme='confetti'] button:hover:not(:disabled) {
+    transform: none;
+  }
 }

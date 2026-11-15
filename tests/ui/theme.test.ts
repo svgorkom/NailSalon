@@ -2,8 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_THEME, SCENE_LIGHT, THEME_LABELS, THEMES, parseTheme } from '../../src/ui/theme';
 
 describe('theme', () => {
-  it('knows the five themes of TriominosTheGame', () => {
-    expect(THEMES).toEqual(['classic', 'modern', 'playful', 'midnight', 'porcelain']);
+  it('starts with the five themes of TriominosTheGame', () => {
+    expect(THEMES.slice(0, 5)).toEqual(['classic', 'modern', 'playful', 'midnight', 'porcelain']);
+  });
+
+  it('has the festive themes of NailSalon', () => {
+    expect(THEMES.slice(5)).toEqual(['christmas', 'sinterklaas', 'confetti', 'pink', 'rainbow']);
+  });
+
+  it('parses the new themes', () => {
+    expect(parseTheme('Sinterklaas')).toBe('sinterklaas');
+    expect(parseTheme('rainbow')).toBe('rainbow');
   });
 
   it('has a Dutch label for every theme', () => {
