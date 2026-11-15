@@ -16,7 +16,7 @@ Requires Visual Studio 2022 or newer with the **Node.js development** workload (
 
 1. Open `NailSalon.slnx`. Visual Studio runs `npm install` the first time (see the Output window, *npm*).
 2. Right-click the project *NailSalon* in Solution Explorer → **Set as Startup Project** (once).
-3. Press F5. `.vscode/launch.json` makes Visual Studio run `npm run dev` in a terminal; Vite then opens the browser on http://localhost:5173 (the first start takes a few seconds while Vite bundles). Stop with Shift+F5.
+3. Press F5. `.vscode/launch.json` makes Visual Studio run `npm run dev` (output in the *Debug* Output window); Vite then opens the browser on http://localhost:5173 (the first start takes a few seconds while Vite bundles). Stop with Shift+F5.
 4. Tests appear in Test Explorer (Vitest).
 
 ### Without Visual Studio or admin rights
