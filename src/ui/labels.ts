@@ -1,4 +1,4 @@
-import type { Finger, Finish } from '../core';
+import type { Finger, Finish, NailShape } from '../core';
 
 /** Dutch user-facing names. */
 export const FINGER_LABELS: Readonly<Record<Finger, string>> = {
@@ -7,6 +7,16 @@ export const FINGER_LABELS: Readonly<Record<Finger, string>> = {
   middle: 'Middelvinger',
   ring: 'Ringvinger',
   little: 'Pink',
+};
+
+export const SHAPE_LABELS: Readonly<Record<NailShape, string>> = {
+  round: 'Rond',
+  oval: 'Ovaal',
+  almond: 'Amandel',
+  square: 'Vierkant',
+  squoval: 'Zacht vierkant',
+  stiletto: 'Stiletto',
+  coffin: 'Ballerina',
 };
 
 export const FINISH_LABELS: Readonly<Record<Finish, string>> = {

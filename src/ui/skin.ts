@@ -30,3 +30,26 @@ export function loadSkin(): SkinToneId {
 export function saveSkin(id: SkinToneId): void {
   writeSetting(STORAGE_KEY, id);
 }
+
+/** Average colour of the skin texture of the hand model (`public/assets/hand/hand.glb`), which the tint is relative to. */
+const TEXTURE_AVERAGE = '#dba388';
+
+/** sRGB channel (0..1) to linear light. */
+function toLinear(channel: number): number {
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function linearChannels(hex: string): readonly [number, number, number] {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255].map((channel) => toLinear(channel / 255)) as unknown as readonly [number, number, number];
+}
+
+/**
+ * Linear RGB factors that turn the skin texture of the hand model into the given skin colour (`#rrggbb`).
+ * A factor above 1 lightens that channel: the texture is a light-medium skin, lighter tones need a little more than 1.
+ */
+export function skinTint(color: string): readonly [number, number, number] {
+  const [r, g, b] = linearChannels(color);
+  const [ar, ag, ab] = linearChannels(TEXTURE_AVERAGE);
+  return [r / ar, g / ag, b / ab];
+}
