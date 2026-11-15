@@ -1,12 +1,13 @@
 import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, createPortal, type ThreeEvent, useThree } from '@react-three/fiber';
 import { Fragment, useEffect, useMemo } from 'react';
-import { LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, Vector3 } from 'three';
+import { CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
 import { type Design, type Finger, FINGERS, type Finish, type Nail } from '../core';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
 import { findNailAnchors, type NailAnchor } from './nailBed';
 import { createNailGeometry } from './nailGeometry';
+import type { NailPaint } from './nailPaint';
 import { nearestFinger, type Point } from './picking';
 
 interface HandSceneProps {
@@ -15,6 +16,8 @@ interface HandSceneProps {
   readonly theme: Theme;
   /** Base colour of the skin. */
   readonly skin: string;
+  /** Holds the texture of each nail: base colour, drawing and stickers. */
+  readonly paint: NailPaint;
   readonly onSelect: (finger: Finger) => void;
 }
 
@@ -39,7 +42,7 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
 
 useGLTF.preload(HAND_URL);
 
-export function HandScene({ design, selected, theme, skin, onSelect }: HandSceneProps) {
+export function HandScene({ design, selected, theme, skin, paint, onSelect }: HandSceneProps) {
   return (
     <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: VIEW_POSITION, fov: 40 }} data-testid="hand-scene">
       <ambientLight intensity={0.3} color={SCENE_LIGHT[theme].sky} />
@@ -49,7 +52,7 @@ export function HandScene({ design, selected, theme, skin, onSelect }: HandScene
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Hand design={design} selected={selected} skin={skin} onSelect={onSelect} />
+      <Hand design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
       <OrbitControls makeDefault enablePan={false} target={VIEW_TARGET} minDistance={1.2} maxDistance={9} />
     </Canvas>
   );
@@ -59,10 +62,11 @@ interface HandProps {
   readonly design: Design;
   readonly selected: Finger | null;
   readonly skin: string;
+  readonly paint: NailPaint;
   readonly onSelect: (finger: Finger) => void;
 }
 
-function Hand({ design, selected, skin, onSelect }: HandProps) {
+function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
   const { scene } = useGLTF(HAND_URL);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene), [scene]);
@@ -90,7 +94,7 @@ function Hand({ design, selected, skin, onSelect }: HandProps) {
       {FINGERS.map((finger) => (
         <Fragment key={finger}>
           {createPortal(
-            <NailMesh nail={design.nails[finger]} anchor={anchors[finger]} isSelected={finger === selected} onSelect={() => onSelect(finger)} />,
+            <NailMesh finger={finger} nail={design.nails[finger]} anchor={anchors[finger]} paint={paint} isSelected={finger === selected} onSelect={() => onSelect(finger)} />,
             anchors[finger].node,
           )}
         </Fragment>
@@ -106,16 +110,38 @@ function positionIn(root: Object3D, node: Object3D): Point {
 }
 
 interface NailMeshProps {
+  readonly finger: Finger;
   readonly nail: Nail;
+  readonly paint: NailPaint;
   readonly anchor: NailAnchor;
   readonly isSelected: boolean;
   readonly onSelect: () => void;
 }
 
-function NailMesh({ nail, anchor, isSelected, onSelect }: NailMeshProps) {
+function NailMesh({ finger, nail, paint, anchor, isSelected, onSelect }: NailMeshProps) {
+  const invalidate = useThree((state) => state.invalidate);
   const geometry = useMemo(() => createNailGeometry(nail.shape, nail.length, anchor.bed), [nail.shape, nail.length, anchor.bed]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   const material = FINISH_MATERIAL[nail.finish];
+
+  // The same canvas as on the drawing pad: base colour, drawing and stickers. Its UV top is the free edge.
+  const texture = useMemo(() => {
+    const created = new CanvasTexture(paint.canvas(finger));
+    created.colorSpace = SRGBColorSpace;
+    created.anisotropy = 4;
+    return created;
+  }, [paint, finger]);
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  useEffect(
+    () =>
+      paint.subscribe((changed) => {
+        if (changed !== finger) return;
+        texture.needsUpdate = true;
+        invalidate();
+      }),
+    [paint, finger, texture, invalidate],
+  );
 
   return (
     <mesh
@@ -126,7 +152,7 @@ function NailMesh({ nail, anchor, isSelected, onSelect }: NailMeshProps) {
       }}
     >
       <meshPhysicalMaterial
-        color={nail.color}
+        map={texture}
         roughness={material.roughness}
         metalness={material.metalness}
         clearcoat={material.clearcoat}

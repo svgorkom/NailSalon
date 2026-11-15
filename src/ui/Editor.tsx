@@ -1,10 +1,18 @@
-import { lazy, Suspense, useReducer, useState } from 'react';
-import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, NAIL_SHAPES, redo, undo } from '../core';
+import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
+import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
+import { NailPaint } from '../scene/nailPaint';
+import { ColorTool, DrawTools, StickerTools } from './DecorationTools';
 import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
+import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
 import { THEME_LABELS, THEMES, type Theme } from './theme';
+import { clampToolsWidth, loadToolsWidth, saveToolsWidth } from './toolsWidth';
 
 const HandScene = lazy(() => import('../scene/HandScene').then((module) => ({ default: module.HandScene })));
+
+type Mode = 'look' | 'draw' | 'sticker';
+
+const MODE_LABELS: Readonly<Record<Mode, string>> = { look: 'Kleur', draw: 'Tekenen', sticker: 'Stickers' };
 
 type Action = { readonly type: 'command'; readonly command: Command } | { readonly type: 'undo' } | { readonly type: 'redo' };
 
@@ -30,21 +38,74 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const [history, dispatch] = useReducer(reducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
   const [selected, setSelected] = useState<Finger | null>(null);
   const [allNails, setAllNails] = useState(false);
+  const [mode, setMode] = useState<Mode>('look');
+  const [eraser, setEraser] = useState(false);
+  const [brushSize, setBrushSize] = useState(0.06);
+  const [toolColor, setToolColor] = useState('#c8102e');
+  const [stickerKind, setStickerKind] = useState<StickerKind>('heart');
+  const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
+  const [paint] = useState(() => new NailPaint());
+  const stickerCount = useRef(0);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [toolsWidth, setToolsWidth] = useState(loadToolsWidth);
   const design = history.present;
   const target = allNails ? 'all' : selected;
   // For all nails at once the slider shows the index finger; the command then sets every nail.
   const lengthShown = design.nails[target === null || target === 'all' ? 'index' : target].length;
+  // The pad shows the chosen nail; with all nails it shows the middle finger unless another is chosen.
+  const padFinger = selected ?? (allNails ? 'middle' : null);
+  const padNail = padFinger === null ? undefined : design.nails[padFinger];
+  const modeLabelId = useId();
+
+  // Before the browser paints, so the nail never shows a stale texture for one frame.
+  useLayoutEffect(() => paint.sync(design), [paint, design]);
 
   const send = (command: Command) => dispatch({ type: 'command', command });
 
+  // The width follows the pointer through a CSS variable, so dragging does not re-render the editor.
+  const widthFor = (clientX: number): number => {
+    const rect = editorRef.current?.getBoundingClientRect();
+    return rect === undefined ? toolsWidth : clampToolsWidth(rect.right - clientX, rect.width);
+  };
+  const resizeTo = (width: number) => editorRef.current?.style.setProperty('--tools-width', `${width}px`);
+  const onResizeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) resizeTo(widthFor(event.clientX));
+  };
+  const onResizeEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const width = widthFor(event.clientX);
+    resizeTo(width);
+    setToolsWidth(width);
+    saveToolsWidth(width);
+  };
+  const onResizeKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === 'ArrowLeft' ? 24 : event.key === 'ArrowRight' ? -24 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const width = clampToolsWidth(toolsWidth + step, editorRef.current?.getBoundingClientRect().width ?? 0);
+    setToolsWidth(width);
+    saveToolsWidth(width);
+  };
+
   return (
-    <div className="editor">
+    <div className="editor" ref={editorRef} style={{ ['--tools-width' as string]: `${toolsWidth}px` }}>
       <div className="viewer">
         <Suspense fallback={<p className="loading">Hand laden…</p>}>
-          <HandScene design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} onSelect={setSelected} />
+          <HandScene design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
         </Suspense>
         <div className="vignette" />
       </div>
+      <div
+        className="resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Breedte van het gereedschap"
+        aria-valuenow={toolsWidth}
+        tabIndex={0}
+        onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+        onPointerMove={onResizeMove}
+        onPointerUp={onResizeEnd}
+        onKeyDown={onResizeKey}
+      />
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="row">
           <button type="button" onClick={() => dispatch({ type: 'undo' })} disabled={!canUndo(history)}>
@@ -61,55 +122,109 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
         <p className="status" role="status">
           {target === null ? 'Tik op een nagel om te beginnen.' : target === 'all' ? 'Alle nagels' : FINGER_LABELS[target]}
         </p>
-        <fieldset disabled={target === null}>
-          <legend>Vorm</legend>
-          <div className="choices">
-            {NAIL_SHAPES.map((shape) => (
-              <button key={shape} type="button" className="choice" onClick={() => target && send({ type: 'setShape', target, shape })}>
-                {SHAPE_LABELS[shape]}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-        <fieldset disabled={target === null}>
-          <legend>Lengte</legend>
-          <input
-            type="range"
-            className="length"
-            min={0}
-            max={1}
-            step={0.1}
-            value={lengthShown}
-            aria-label="Lengte van de nagel"
-            onChange={(event) => target && send({ type: 'setLength', target, length: Number(event.target.value) })}
-          />
-        </fieldset>
-        <fieldset disabled={target === null}>
-          <legend>Kleur</legend>
-          <div className="swatches">
-            {PALETTE.map(({ color, name }) => (
-              <button
-                key={color}
-                type="button"
-                className="swatch"
-                style={{ background: color }}
-                title={name}
-                aria-label={name}
-                onClick={() => target && send({ type: 'setColor', target, color })}
-              />
-            ))}
-          </div>
-        </fieldset>
-        <fieldset disabled={target === null}>
-          <legend>Afwerking</legend>
-          <div className="choices">
-            {FINISHES.map((finish) => (
-              <button key={finish} type="button" className="choice" onClick={() => target && send({ type: 'setFinish', target, finish })}>
-                {FINISH_LABELS[finish]}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <div className="choices" role="group" aria-labelledby={modeLabelId}>
+          <span id={modeLabelId} className="visually-hidden">
+            Wat wil je doen?
+          </span>
+          {(Object.keys(MODE_LABELS) as Mode[]).map((name) => (
+            <button key={name} type="button" className="choice" aria-pressed={name === mode} onClick={() => setMode(name)}>
+              {MODE_LABELS[name]}
+            </button>
+          ))}
+        </div>
+        {mode === 'look' ? (
+          <>
+          <fieldset disabled={target === null}>
+            <legend>Vorm</legend>
+            <div className="choices">
+              {NAIL_SHAPES.map((shape) => (
+                <button key={shape} type="button" className="choice" onClick={() => target && send({ type: 'setShape', target, shape })}>
+                  {SHAPE_LABELS[shape]}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset disabled={target === null}>
+            <legend>Lengte</legend>
+            <input
+              type="range"
+              className="length"
+              min={0}
+              max={1}
+              step={0.1}
+              value={lengthShown}
+              aria-label="Lengte van de nagel"
+              onChange={(event) => target && send({ type: 'setLength', target, length: Number(event.target.value) })}
+            />
+          </fieldset>
+          <fieldset disabled={target === null}>
+            <legend>Kleur</legend>
+            <div className="swatches">
+              {PALETTE.map(({ color, name }) => (
+                <button
+                  key={color}
+                  type="button"
+                  className="swatch"
+                  style={{ background: color }}
+                  title={name}
+                  aria-label={name}
+                  onClick={() => target && send({ type: 'setColor', target, color })}
+                />
+              ))}
+            </div>
+          </fieldset>
+          <fieldset disabled={target === null}>
+            <legend>Afwerking</legend>
+            <div className="choices">
+              {FINISHES.map((finish) => (
+                <button key={finish} type="button" className="choice" onClick={() => target && send({ type: 'setFinish', target, finish })}>
+                  {FINISH_LABELS[finish]}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          </>
+        ) : (
+          <>
+            <NailPad
+              finger={padFinger}
+              target={target}
+              design={design}
+              paint={paint}
+              tool={mode === 'sticker' ? 'sticker' : eraser ? 'eraser' : 'brush'}
+              color={toolColor}
+              brushSize={brushSize}
+              stickerKind={stickerKind}
+              selectedSticker={selectedSticker}
+              onCommand={send}
+              onSelectSticker={setSelectedSticker}
+              newStickerId={() => `s${(stickerCount.current += 1)}`}
+            />
+            <fieldset disabled={target === null} className="bare">
+              <ColorTool color={toolColor} onChange={setToolColor} />
+              {mode === 'draw' ? (
+                <DrawTools
+                  eraser={eraser}
+                  onEraserChange={setEraser}
+                  size={brushSize}
+                  onSizeChange={setBrushSize}
+                  canClear={padNail !== undefined && padNail.strokes.length > 0}
+                  onClear={() => target && send({ type: 'clearDrawing', target })}
+                />
+              ) : (
+                <StickerTools
+                  kind={stickerKind}
+                  onKindChange={setStickerKind}
+                  selected={padNail?.stickers.find(({ id }) => id === selectedSticker)}
+                  canClear={padNail !== undefined && padNail.stickers.length > 0}
+                  send={send}
+                  target={target}
+                  onRemoved={() => setSelectedSticker(null)}
+                />
+              )}
+            </fieldset>
+          </>
+        )}
         <fieldset>
           <legend>Huidskleur</legend>
           <div className="swatches">

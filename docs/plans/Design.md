@@ -25,11 +25,11 @@ ui  →  scene  →  core
 
 `core` never imports React, Three.js, Firebase or the DOM.
 
-- **`src/core`**: the design model and all rules. A `Design` has five `Nail`s (thumb to little finger); a nail has shape, length, base colour, finish, pattern, stickers and a drawing reference. Changes are pure functions (`(design, command) → design`); `History` gives undo and redo. Validation (ranges, ids) lives here.
+- **`src/core`**: the design model and all rules. A `Design` has five `Nail`s (thumb to little finger); a nail has shape, length, base colour, finish, pattern, stickers and drawing strokes. Changes are pure functions (`(design, command) → design`); `History` gives undo and redo. Validation (ranges, ids) lives here.
 - **`src/scene`**: React Three Fiber components. The hand is a GLB model lit by an HDRI environment. Nails are generated from shape and length (`core` gives the outline; the scene extrudes and curves it) and anchored to the fingertips, so every shape and length works without extra models. Materials use `MeshPhysicalMaterial` (clearcoat for gloss, metalness/roughness for chrome and matte, a sparkle map for glitter).
-- **Nail texture**: per nail, a 2D canvas combines base colour, pattern, stickers and the drawing layer; the canvas is the live texture of the nail. Composition logic is pure and tested; only the final draw touches the canvas.
+- **Nail texture**: per nail, a 2D canvas combines base colour, the drawing layer (eraser strokes only remove drawing, never the base colour), then stickers, clipped to the nail outline (patterns come with phase 3 and go between base colour and drawing). The canvas is the live texture of the nail and the same canvas is shown on the drawing pad. Positions are fractions of the nail (x across, y from free edge to cuticle), sizes fractions of its width. A stroke that is being drawn goes straight onto the canvas; only the finished stroke becomes a command, so one stroke is one undo step. Sticker shapes are SVG paths in code (original, no asset licence).
 - **`src/ui`**: screens (sign-in, Mijn ontwerpen, editor), the tool bar and the drawing pad. Sends commands to `core`; holds no rules.
-- **`src/data`**: `DesignRepository` interface with a Firebase implementation and an in-memory one for tests. Firestore `users/{uid}/designs/{designId}`; drawings as PNG in Storage under `users/{uid}/designs/{designId}/`. Security rules allow only the owner's daughter's uid.
+- **`src/data`**: `DesignRepository` interface with a Firebase implementation and an in-memory one for tests. Firestore `users/{uid}/designs/{designId}`; drawing strokes are vector data inside the design document (replayed onto the nail texture), so undo and redo are exact; PNG files in Storage are only for exported images, under `users/{uid}/designs/{designId}/`. Security rules allow only the owner's daughter's uid.
 
 ## Performance
 
@@ -59,6 +59,8 @@ Each phase on its own branch; the owner merges.
 ## Open items
 
 - The hand model is in place (see *Hand model*). A scan-quality skin (photo-based textures, veins, palm lines) and a left hand are not there yet.
+- Stickers and free drawing were built before the hand model. The flat drawing pad still uses the placeholder outline from `traceNailOutline`; the 3D nail takes the shape from core. The UV convention (top of the texture is the free edge) stays.
+- Strokes make the design document grow. Check against the Firestore 1 MB document limit in phase 5; if needed, simplify points or store the drawing separately.
 - A Firebase project is to be created by the owner before phase 5.
 
 ## Hand model

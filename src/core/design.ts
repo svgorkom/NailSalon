@@ -1,3 +1,5 @@
+import type { Sticker, Stroke } from './decoration';
+
 /** Fingers in order from thumb to little finger. */
 export const FINGERS = ['thumb', 'index', 'middle', 'ring', 'little'] as const;
 export type Finger = (typeof FINGERS)[number];
@@ -20,6 +22,10 @@ export interface Nail {
   readonly length: number;
   readonly color: HexColor;
   readonly finish: Finish;
+  /** Free drawing, oldest first. */
+  readonly strokes: readonly Stroke[];
+  /** Stickers, bottom first. */
+  readonly stickers: readonly Sticker[];
 }
 
 export interface Design {
@@ -27,7 +33,7 @@ export interface Design {
   readonly nails: Readonly<Record<Finger, Nail>>;
 }
 
-export const DEFAULT_NAIL: Nail = { shape: 'almond', length: 0.3, color: '#e8a0b4', finish: 'gloss' };
+export const DEFAULT_NAIL: Nail = { shape: 'almond', length: 0.3, color: '#e8a0b4', finish: 'gloss', strokes: [], stickers: [] };
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
