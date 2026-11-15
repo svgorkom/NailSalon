@@ -1,16 +1,27 @@
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef } from 'react';
-import { type Command, type Design, type Finger, type StickerKind, type StickerPlacement, type Target } from '../core';
-import { type NailPaint, TEXTURE_HEIGHT, TEXTURE_WIDTH, traceNailOutline } from '../scene/nailPaint';
+import { type Command, type Design, type Finger, type GemKind, type Nail, type StickerKind, type StickerPlacement, type Target } from '../core';
+import { type NailPaint, paintGem, TEXTURE_HEIGHT, TEXTURE_WIDTH, traceNailOutline } from '../scene/nailPaint';
 import { clamp01, movedEnough, type NailPoint, stickerAt, toNailPoint } from './pad';
 
-export type PadTool = 'brush' | 'eraser' | 'sticker';
+export type PadTool = 'brush' | 'eraser' | 'sticker' | 'gem';
 
-/** Size of a new sticker, as a fraction of the nail width. */
+/** Size of a new sticker and of a new gem, as a fraction of the nail width. */
 const NEW_STICKER_SIZE = 0.35;
+const NEW_GEM_SIZE = 0.2;
+
+/** Stickers are painted on the nail; gems stand on it in 3D. */
+type Layer = 'stickers' | 'gems';
 
 type Gesture =
   | { readonly kind: 'stroke'; readonly points: number[] }
-  | { readonly kind: 'drag'; readonly id: string; readonly offset: NailPoint; placement: StickerPlacement; moved: boolean };
+  | { readonly kind: 'drag'; readonly layer: Layer; readonly id: string; readonly offset: NailPoint; placement: StickerPlacement; moved: boolean };
+
+/** A nail with one sticker or gem moved to `placement`. */
+function withPlacement(nail: Nail, layer: Layer, id: string, placement: StickerPlacement): Nail {
+  return layer === 'stickers'
+    ? { ...nail, stickers: nail.stickers.map((item) => (item.id === id ? { ...item, ...placement } : item)) }
+    : { ...nail, gems: nail.gems.map((item) => (item.id === id ? { ...item, ...placement } : item)) };
+}
 
 interface NailPadProps {
   /** The nail shown on the pad; null until a nail is chosen. */
@@ -24,14 +35,18 @@ interface NailPadProps {
   /** Brush and eraser size, as a fraction of the nail width. */
   readonly brushSize: number;
   readonly stickerKind: StickerKind;
-  readonly selectedSticker: string | null;
+  readonly gemKind: GemKind;
+  /** Whether new gems are clear glass. */
+  readonly gemClear: boolean;
+  /** The selected sticker or gem, depending on the tool. */
+  readonly selectedItem: string | null;
   readonly onCommand: (command: Command) => void;
-  readonly onSelectSticker: (id: string | null) => void;
-  readonly newStickerId: () => string;
+  readonly onSelectItem: (id: string | null) => void;
+  readonly newItemId: () => string;
 }
 
-/** A large flat view of one nail to draw on and to place stickers on. Shows the same canvas as the 3D nail. */
-export function NailPad({ finger, target, design, paint, tool, color, brushSize, stickerKind, selectedSticker, onCommand, onSelectSticker, newStickerId }: NailPadProps) {
+/** A large flat view of one nail to draw on and to place stickers and gems on. Shows the same canvas as the 3D nail, with the gems drawn over it. */
+export function NailPad({ finger, target, design, paint, tool, color, brushSize, stickerKind, gemKind, gemClear, selectedItem, onCommand, onSelectItem, newItemId }: NailPadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const targets: readonly Finger[] = target === null ? [] : target === 'all' ? (Object.keys(design.nails) as Finger[]) : [target];
@@ -47,19 +62,22 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
     traceNailOutline(ctx);
     ctx.stroke();
     const current = gesture.current;
-    const sticker = design.nails[finger].stickers.find(({ id }) => id === selectedSticker);
-    if (tool === 'sticker' && sticker !== undefined) {
-      const placement = current?.kind === 'drag' && current.id === sticker.id ? current.placement : sticker;
+    const dragged = current?.kind === 'drag' ? current : null;
+    const nail = dragged === null ? design.nails[finger] : withPlacement(design.nails[finger], dragged.layer, dragged.id, dragged.placement);
+    for (const gem of nail.gems) paintGem(ctx, gem);
+    const items = tool === 'sticker' ? nail.stickers : tool === 'gem' ? nail.gems : [];
+    const item = items.find(({ id }) => id === selectedItem);
+    if (item !== undefined) {
       ctx.save();
       ctx.setLineDash([12, 10]);
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(placement.x * TEXTURE_WIDTH, placement.y * TEXTURE_HEIGHT, (placement.size * TEXTURE_WIDTH) / 2 + 6, 0, Math.PI * 2);
+      ctx.arc(item.x * TEXTURE_WIDTH, item.y * TEXTURE_HEIGHT, (item.size * TEXTURE_WIDTH) / 2 + 6, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
-  }, [finger, design, paint, tool, selectedSticker]);
+  }, [finger, design, paint, tool, selectedItem]);
 
   useEffect(() => {
     draw();
@@ -76,15 +94,22 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
     if (finger === null || target === null) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointAt(event);
-    if (tool === 'sticker') {
-      const hit = stickerAt(design.nails[finger].stickers, point);
+    if (tool === 'sticker' || tool === 'gem') {
+      const layer: Layer = tool === 'sticker' ? 'stickers' : 'gems';
+      const hit = stickerAt<StickerPlacement & { id: string }>(design.nails[finger][layer], point);
       if (hit === undefined) {
-        const id = newStickerId();
-        onCommand({ type: 'addSticker', target, sticker: { id, kind: stickerKind, color, x: point.x, y: point.y, size: NEW_STICKER_SIZE, rotation: 0 } });
-        onSelectSticker(id);
+        const id = newItemId();
+        const placement = { x: point.x, y: point.y, rotation: 0 };
+        onCommand(
+          tool === 'sticker'
+            ? { type: 'addSticker', target, sticker: { id, kind: stickerKind, color, size: NEW_STICKER_SIZE, ...placement } }
+            : { type: 'addGem', target, gem: { id, kind: gemKind, color, clear: gemClear, size: NEW_GEM_SIZE, ...placement } },
+        );
+        onSelectItem(id);
       } else {
-        onSelectSticker(hit.id);
-        gesture.current = { kind: 'drag', id: hit.id, offset: { x: hit.x - point.x, y: hit.y - point.y }, placement: hit, moved: false };
+        onSelectItem(hit.id);
+        const { x, y, size, rotation } = hit;
+        gesture.current = { kind: 'drag', layer, id: hit.id, offset: { x: x - point.x, y: y - point.y }, placement: { x, y, size, rotation }, moved: false };
       }
       return;
     }
@@ -107,10 +132,12 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
       } else {
         current.placement = { ...current.placement, x: clamp01(point.x + current.offset.x), y: clamp01(point.y + current.offset.y) };
         current.moved = true;
-        for (const each of targets) {
-          const nail = design.nails[each];
-          if (!nail.stickers.some(({ id }) => id === current.id)) continue;
-          paint.preview(each, { ...nail, stickers: nail.stickers.map((sticker) => (sticker.id === current.id ? { ...sticker, ...current.placement } : sticker)) });
+        // A sticker is part of the texture, so the 3D nail follows it; a gem moves on the pad and lands on the nail when let go.
+        if (current.layer === 'stickers') {
+          for (const each of targets) {
+            const nail = design.nails[each];
+            if (nail.stickers.some(({ id }) => id === current.id)) paint.preview(each, withPlacement(nail, 'stickers', current.id, current.placement));
+          }
         }
         draw();
       }
@@ -124,7 +151,9 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
     // A cancelled gesture (for example a palm touch) changes nothing.
     const done = event.type === 'pointerup';
     if (done && current.kind === 'stroke') onCommand({ type: 'addStroke', target, stroke: strokeOf(current.points) });
-    if (done && current.kind === 'drag' && current.moved) onCommand({ type: 'updateSticker', target, id: current.id, placement: current.placement });
+    if (done && current.kind === 'drag' && current.moved) {
+      onCommand({ type: current.layer === 'stickers' ? 'updateSticker' : 'updateGem', target, id: current.id, placement: current.placement });
+    }
     paint.sync(design);
     draw();
   };

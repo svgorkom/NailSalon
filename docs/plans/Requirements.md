@@ -27,8 +27,9 @@ Per selected nail, or for all nails at once:
 - **Length:** short to extra long, continuous.
 - **Colour:** a palette plus a free colour picker.
 - **Finish:** gloss, matte, glitter, metallic, chrome.
-- **Patterns:** French tip, gradient (ombré), dots, stripes; with their own colours.
+- **Patterns:** French tip (colour and depth, with a curved smile line), gradient (ombré), dots, stripes; with their own colours.
 - **Stickers:** hearts, stars, flowers and similar; position, size and rotation on the nail.
+- **Gems:** 3D rhinestones and pearls glued on the nail (diamond, pearl, heart); position, size, rotation, colour, and solid or clear (see-through); colour and clearness can be changed after placing.
 - **Free drawing:** brush with size and colour, eraser.
 - Undo and redo for every change; "clear nail" and "clear all".
 

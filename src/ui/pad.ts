@@ -1,4 +1,3 @@
-import type { Sticker } from '../core';
 import { TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../scene/nailPaint';
 
 export interface NailPoint {
@@ -31,9 +30,9 @@ export function movedEnough(from: NailPoint, to: NailPoint): boolean {
   return distance(from, to) >= MIN_STEP;
 }
 
-/** The topmost sticker under the point, or undefined. A sticker counts as a circle that fits in its size. */
-export function stickerAt(stickers: readonly Sticker[], point: NailPoint): Sticker | undefined {
-  return stickers.findLast((sticker) => distance(sticker, point) <= sticker.size / 2);
+/** The topmost sticker or gem under the point, or undefined. Each counts as a circle that fits in its size. */
+export function stickerAt<T extends NailPoint & { readonly size: number }>(items: readonly T[], point: NailPoint): T | undefined {
+  return items.findLast((item) => distance(item, point) <= item.size / 2);
 }
 
 export function clamp01(value: number): number {

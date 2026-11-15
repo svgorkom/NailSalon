@@ -1,5 +1,12 @@
 import {
+  assertFrenchTip,
+  assertGem,
+  assertGemLook,
+  assertGemPlacement,
   assertPlacement,
+  type FrenchTip,
+  type Gem,
+  type GemLook,
   assertSticker,
   assertStroke,
   normaliseRotation,
@@ -24,6 +31,15 @@ export type Command =
   | { readonly type: 'updateSticker'; readonly target: Target; readonly id: string; readonly placement: StickerPlacement }
   | { readonly type: 'removeSticker'; readonly target: Target; readonly id: string }
   | { readonly type: 'clearStickers'; readonly target: Target }
+  /** null removes the French tip. */
+  | { readonly type: 'setFrench'; readonly target: Target; readonly french: FrenchTip | null }
+  | { readonly type: 'addGem'; readonly target: Target; readonly gem: Gem }
+  /** Only the nails that have a gem with this id change; it is an error if there is none. */
+  | { readonly type: 'updateGem'; readonly target: Target; readonly id: string; readonly placement: StickerPlacement }
+  /** Changes colour and clearness of a gem; only the nails that have it change. */
+  | { readonly type: 'styleGem'; readonly target: Target; readonly id: string; readonly look: GemLook }
+  | { readonly type: 'removeGem'; readonly target: Target; readonly id: string }
+  | { readonly type: 'clearGems'; readonly target: Target }
   | { readonly type: 'rename'; readonly name: string };
 
 /** Applies a command and returns a new design; the input is never changed. Throws on invalid input. */
@@ -68,14 +84,42 @@ export function apply(design: Design, command: Command): Design {
     case 'updateSticker': {
       assertPlacement(command.placement);
       const placement = { ...command.placement, rotation: normaliseRotation(command.placement.rotation) };
-      return updateStickers(design, command.target, command.id, (stickers) =>
+      return updateItems(design, command.target, 'stickers', command.id, (stickers) =>
         stickers.map((sticker) => (sticker.id === command.id ? { ...sticker, ...placement } : sticker)),
       );
     }
     case 'removeSticker':
-      return updateStickers(design, command.target, command.id, (stickers) => stickers.filter(({ id }) => id !== command.id));
+      return updateItems(design, command.target, 'stickers', command.id, (stickers) => stickers.filter(({ id }) => id !== command.id));
     case 'clearStickers':
       return updateNails(design, command.target, (nail) => (nail.stickers.length === 0 ? nail : { ...nail, stickers: [] }));
+    case 'setFrench': {
+      if (command.french === null) return updateNails(design, command.target, (nail) => ({ ...nail, french: null }));
+      assertFrenchTip(command.french);
+      const french = { ...command.french, color: command.french.color.toLowerCase() };
+      return updateNails(design, command.target, (nail) => ({ ...nail, french }));
+    }
+    case 'addGem': {
+      assertGem(command.gem);
+      const gem = { ...command.gem, color: command.gem.color.toLowerCase(), rotation: normaliseRotation(command.gem.rotation) };
+      return updateNails(design, command.target, (nail) => {
+        if (nail.gems.some(({ id }) => id === gem.id)) throw new RangeError(`Gem ${gem.id} already exists on this nail.`);
+        return { ...nail, gems: [...nail.gems, gem] };
+      });
+    }
+    case 'updateGem': {
+      assertGemPlacement(command.placement);
+      const placement = { ...command.placement, rotation: normaliseRotation(command.placement.rotation) };
+      return updateItems(design, command.target, 'gems', command.id, (gems) => gems.map((gem) => (gem.id === command.id ? { ...gem, ...placement } : gem)));
+    }
+    case 'styleGem': {
+      assertGemLook(command.look);
+      const look = { color: command.look.color.toLowerCase(), clear: command.look.clear };
+      return updateItems(design, command.target, 'gems', command.id, (gems) => gems.map((gem) => (gem.id === command.id ? { ...gem, ...look } : gem)));
+    }
+    case 'removeGem':
+      return updateItems(design, command.target, 'gems', command.id, (gems) => gems.filter(({ id }) => id !== command.id));
+    case 'clearGems':
+      return updateNails(design, command.target, (nail) => (nail.gems.length === 0 ? nail : { ...nail, gems: [] }));
   }
 }
 
@@ -89,10 +133,15 @@ function updateNails(design: Design, target: Target, update: (nail: Nail) => Nai
   return { ...design, nails };
 }
 
-function updateStickers(design: Design, target: Target, id: string, update: (stickers: readonly Sticker[]) => readonly Sticker[]): Design {
-  const fingers = targetFingers(target).filter((finger) => design.nails[finger].stickers.some((sticker) => sticker.id === id));
-  if (fingers.length === 0) throw new RangeError(`Sticker ${id} does not exist.`);
+type Layer = 'stickers' | 'gems';
+type LayerItem<L extends Layer> = L extends 'stickers' ? Sticker : Gem;
+
+/** Changes the stickers or gems of the targeted nails that have an item with this id. Throws if none has. */
+function updateItems<L extends Layer>(design: Design, target: Target, layer: L, id: string, update: (items: readonly LayerItem<L>[]) => readonly LayerItem<L>[]): Design {
+  const items = (finger: Finger) => design.nails[finger][layer] as readonly LayerItem<L>[];
+  const fingers = targetFingers(target).filter((finger) => items(finger).some((item) => item.id === id));
+  if (fingers.length === 0) throw new RangeError(`${layer === 'gems' ? 'Gem' : 'Sticker'} ${id} does not exist.`);
   const nails = { ...design.nails };
-  for (const finger of fingers) nails[finger] = { ...nails[finger], stickers: update(nails[finger].stickers) };
+  for (const finger of fingers) nails[finger] = { ...nails[finger], [layer]: update(items(finger)) };
   return { ...design, nails };
 }

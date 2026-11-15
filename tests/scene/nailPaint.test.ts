@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apply, createDesign, type Design, FINGERS, type Sticker, type Stroke } from '../../src/core';
-import { NailPaint, paintNail, paintStroke, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../../src/scene/nailPaint';
+import { NailPaint, paintFrenchTip, paintGem, paintNail, paintStroke, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../../src/scene/nailPaint';
 
 /** A canvas context that records what is called and set, in order. */
 function recorder() {
@@ -74,6 +74,55 @@ describe('paintNail', () => {
     paintNail(ctx, { ...createDesign('T').nails.thumb, stickers: [sticker] }, {} as CanvasImageSource);
 
     expect(log).toContain(`rotate(${Math.PI / 2})`);
+  });
+
+  it('paints the French tip after the base colour and before the drawing', () => {
+    const { ctx, log } = recorder();
+    paintNail(ctx, { ...createDesign('T').nails.thumb, color: '#abcdef', french: { color: '#ffffff', depth: 0.25 } }, {} as CanvasImageSource);
+
+    const order = ['fillStyle=#abcdef', 'fillStyle=#ffffff', 'drawImage('].map((part) => log.indexOf(log.find((entry) => entry.startsWith(part)) ?? ''));
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it('does not paint gems on the texture', () => {
+    const { ctx, log } = recorder();
+    const gem = { ...sticker, kind: 'diamond' as const, color: '#00ff00', clear: false };
+    paintNail(ctx, { ...createDesign('T').nails.thumb, gems: [gem] }, {} as CanvasImageSource);
+
+    expect(log).not.toContain('fillStyle=#00ff00');
+  });
+});
+
+describe('paintGem', () => {
+  const gem = { id: 'g1', kind: 'diamond' as const, color: '#3366ff', clear: false, x: 0.5, y: 0.25, size: 0.2, rotation: 0 };
+
+  it('draws the gem in its colour at its place, solid unless it is clear', () => {
+    const solid = recorder();
+    paintGem(solid.ctx, gem);
+    const clear = recorder();
+    paintGem(clear.ctx, { ...gem, clear: true });
+
+    expect(solid.log).toContain(`translate(${0.5 * TEXTURE_WIDTH},${0.25 * TEXTURE_HEIGHT})`);
+    expect(solid.log).toContain('fillStyle=#3366ff');
+    expect(solid.log.find((entry) => entry.startsWith('globalAlpha='))).toBe('globalAlpha=1');
+    expect(clear.log.find((entry) => entry.startsWith('globalAlpha='))).not.toBe('globalAlpha=1');
+  });
+});
+
+describe('paintFrenchTip', () => {
+  it('ends deepest at the sides, with a smile line that is shallower in the middle', () => {
+    const { ctx, log } = recorder();
+    paintFrenchTip(ctx, { color: '#ffffff', depth: 0.25 });
+
+    const side = 0.25 * TEXTURE_HEIGHT;
+    expect(log).toContain(`lineTo(${TEXTURE_WIDTH},${side})`);
+    const curve = log.find((entry) => entry.startsWith('quadraticCurveTo('));
+    const [, controlY, endX, endY] = (curve ?? '').slice('quadraticCurveTo('.length, -1).split(',').map(Number);
+    expect([endX, endY]).toEqual([0, side]);
+    // The curve's middle lies halfway between its ends and its control point.
+    expect(((controlY ?? 0) + side) / 2).toBeLessThan(side);
+    expect(((controlY ?? 0) + side) / 2).toBeGreaterThan(0);
   });
 });
 

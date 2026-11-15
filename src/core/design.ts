@@ -1,4 +1,4 @@
-import type { Sticker, Stroke } from './decoration';
+import type { FrenchTip, Gem, Sticker, Stroke } from './decoration';
 
 /** Fingers in order from thumb to little finger. */
 export const FINGERS = ['thumb', 'index', 'middle', 'ring', 'little'] as const;
@@ -22,10 +22,14 @@ export interface Nail {
   readonly length: number;
   readonly color: HexColor;
   readonly finish: Finish;
+  /** Painted over the base colour, under the drawing; null for none. */
+  readonly french: FrenchTip | null;
   /** Free drawing, oldest first. */
   readonly strokes: readonly Stroke[];
   /** Stickers, bottom first. */
   readonly stickers: readonly Sticker[];
+  /** Rhinestones and pearls, on top of everything. */
+  readonly gems: readonly Gem[];
 }
 
 export interface Design {
@@ -33,7 +37,7 @@ export interface Design {
   readonly nails: Readonly<Record<Finger, Nail>>;
 }
 
-export const DEFAULT_NAIL: Nail = { shape: 'almond', length: 0.3, color: '#e8a0b4', finish: 'gloss', strokes: [], stickers: [] };
+export const DEFAULT_NAIL: Nail = { shape: 'almond', length: 0.3, color: '#e8a0b4', finish: 'gloss', french: null, strokes: [], stickers: [], gems: [] };
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
