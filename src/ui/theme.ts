@@ -5,7 +5,7 @@ import { readSetting, writeSetting } from './storage';
  * NailSalon's own, festive and bright. The colours and decorations live in src/styles.css
  * (`data-theme` on the document element).
  */
-export const THEMES = ['classic', 'modern', 'playful', 'midnight', 'porcelain', 'christmas', 'sinterklaas', 'confetti', 'pink', 'rainbow'] as const;
+export const THEMES = ['classic', 'modern', 'playful', 'midnight', 'porcelain', 'christmas', 'sinterklaas', 'confetti', 'pink', 'rainbow', 'magic'] as const;
 
 export type Theme = (typeof THEMES)[number];
 
@@ -23,6 +23,7 @@ export const THEME_LABELS: Readonly<Record<Theme, string>> = {
   confetti: 'Confetti',
   pink: 'Roze',
   rainbow: 'Regenboog',
+  magic: 'Toverij',
 };
 
 /** Colour of the lamp and of the light from above in the 3D scene: for the shared themes the table lights of TriominosTheGame. */
@@ -37,6 +38,7 @@ export const SCENE_LIGHT: Readonly<Record<Theme, { readonly sun: string; readonl
   confetti: { sun: '#fff6fb', sky: '#f4fbff' },
   pink: { sun: '#fff0f6', sky: '#ffe6f1' },
   rainbow: { sun: '#fffaf2', sky: '#f3efff' },
+  magic: { sun: '#ece8ff', sky: '#dcd6ff' },
 };
 
 /** Also read by the inline script in index.html, which sets the theme before the first paint. */
