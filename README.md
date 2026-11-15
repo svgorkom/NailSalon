@@ -1,6 +1,6 @@
 # NailSalon
 
-Design fingernails on a realistic 3D hand, in the browser. React + React Three Fiber, TypeScript, Vite; Firebase for sign-in and storage; hosted on Cloudflare Workers. Work in progress.
+Design fingernails on a realistic 3D hand, in the browser. React + React Three Fiber, TypeScript, Vite; Firebase for sign-in and storage. Work in progress; runs locally for now, Cloudflare hosting is the last phase.
 
 ## Structure
 
@@ -10,19 +10,27 @@ Design fingernails on a realistic 3D hand, in the browser. React + React Three F
 - `tests`: Vitest tests, mirroring `src`.
 - `docs/plans`: requirements and design; `docs/tracking`: known defects.
 
-## Build and run
+## Run on Windows
 
-Requires Node 22.
+1. Install Node.js 22 LTS or newer, for example in PowerShell: `winget install OpenJS.NodeJS.LTS`. Open a new terminal afterwards.
+2. In the repository folder:
+
+   ```powershell
+   npm ci
+   npm run dev
+   ```
+
+3. Open http://localhost:5173 in Chrome.
+
+To try it on a phone in the same Wi-Fi network: `npm run dev -- --host`, then open the shown network address on the phone (allow Node through the Windows firewall when asked).
+
+## Checks
 
 ```bash
-npm ci
-npm run dev
 npm test
+npm run lint
+npm run build
 ```
-
-## Deploy
-
-Pushes to `main` are built, tested and deployed to Cloudflare Workers by GitHub Actions. The repository needs the secrets `CLOUDFLARE_API_TOKEN` (permission *Workers Scripts: Edit*) and `CLOUDFLARE_ACCOUNT_ID`.
 
 ## Status
 
