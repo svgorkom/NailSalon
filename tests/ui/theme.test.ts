@@ -7,13 +7,15 @@ describe('theme', () => {
   });
 
   it('has the festive themes of NailSalon', () => {
-    expect(THEMES.slice(5)).toEqual(['christmas', 'sinterklaas', 'confetti', 'pink', 'rainbow', 'magic']);
+    expect(THEMES.slice(5)).toEqual(['christmas', 'sinterklaas', 'confetti', 'pink', 'rainbow', 'magic', 'mermaid', 'candy']);
   });
 
   it('parses the new themes', () => {
     expect(parseTheme('Sinterklaas')).toBe('sinterklaas');
     expect(parseTheme('rainbow')).toBe('rainbow');
     expect(parseTheme('Magic')).toBe('magic');
+    expect(parseTheme('mermaid')).toBe('mermaid');
+    expect(parseTheme('Candy')).toBe('candy');
   });
 
   it('has a Dutch label for every theme', () => {
