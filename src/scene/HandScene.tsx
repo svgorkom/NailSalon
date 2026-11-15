@@ -53,7 +53,7 @@ export function HandScene({ design, selected, theme, skin, paint, onSelect }: Ha
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
       <Hand design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
-      <OrbitControls makeDefault enablePan={false} target={VIEW_TARGET} minDistance={1.2} maxDistance={9} />
+      <OrbitControls makeDefault target={VIEW_TARGET} minDistance={1.2} maxDistance={9} />
     </Canvas>
   );
 }
