@@ -269,6 +269,29 @@
   --rainbow: linear-gradient(90deg, #ff6b6b, #ffa94d, #ffe066, #69db7c, #4dabf7, #9775fa, #f783ac);
 }
 
+/* Toverij: a night sky full of magic dust. */
+[data-theme='magic'] {
+  --felt: #1b1f4a;
+  --felt-light: #353b85;
+  --page: #0a0b1f;
+  --text: #ece9ff;
+  --accent: #c7b8ff;
+  --accent-rgb: 199, 184, 255;
+  --accent-light: #f2eeff;
+  --accent-dark: #8f7fe0;
+  --on-accent: #17123a;
+  --panel-top: rgba(24, 26, 64, 0.8);
+  --panel-bottom: rgba(10, 11, 34, 0.86);
+  --panel-shine: rgba(220, 214, 255, 0.14);
+  --raised-top: rgba(44, 48, 110, 0.9);
+  --raised-bottom: rgba(24, 26, 68, 0.9);
+  --field: rgba(12, 13, 38, 0.9);
+  --vignette-rgb: 4, 4, 14;
+  --title-spacing: 0.14em;
+  --ornament-start: '🪄';
+  --ornament-end: '🔮';
+}
+
 * {
   box-sizing: border-box;
 }
@@ -864,6 +887,36 @@ fieldset.bare {
   transform: rotate(-3deg);
 }
 
+/* Toverij: magic dust that drifts up diagonally and twinkles, under a crescent moon. */
+[data-theme='magic'] .viewer {
+  isolation: isolate;
+}
+
+[data-theme='magic'] .viewer::before {
+  content: '';
+  left: -260px;
+  bottom: -260px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cpath d='M20 24L21.68 28.32L26 30L21.68 31.68L20 36L18.32 31.68L14 30L18.32 28.32Z' fill='%23ffffff' opacity='0.9'/%3E%3Cpath d='M120 66L121.12 68.88L124 70L121.12 71.12L120 74L118.88 71.12L116 70L118.88 68.88Z' fill='%23c7b8ff' opacity='0.8'/%3E%3Cpath d='M210 17L210.84 19.16L213 20L210.84 20.84L210 23L209.16 20.84L207 20L209.16 19.16Z' fill='%23ffe8a3' opacity='0.8'/%3E%3Cpath d='M60 137L60.84 139.16L63 140L60.84 140.84L60 143L59.16 140.84L57 140L59.16 139.16Z' fill='%23ffffff' opacity='0.7'/%3E%3Cpath d='M170 163L171.96 168.04L177 170L171.96 171.96L170 177L168.04 171.96L163 170L168.04 168.04Z' fill='%23c7b8ff' opacity='0.9'/%3E%3Cpath d='M240 107L240.84 109.16L243 110L240.84 110.84L240 113L239.16 110.84L237 110L239.16 109.16Z' fill='%23ffffff' opacity='0.6'/%3E%3Cpath d='M100 225L101.4 228.6L105 230L101.4 231.4L100 235L98.6 231.4L95 230L98.6 228.6Z' fill='%23ffe8a3' opacity='0.85'/%3E%3Cpath d='M30 217.5L30.7 219.3L32.5 220L30.7 220.7L30 222.5L29.3 220.7L27.5 220L29.3 219.3Z' fill='%23ffffff' opacity='0.6'/%3E%3Cpath d='M220 236.5L220.98 239.02L223.5 240L220.98 240.98L220 243.5L219.02 240.98L216.5 240L219.02 239.02Z' fill='%23ffffff' opacity='0.7'/%3E%3Cpath d='M150 8L150.56 9.44L152 10L150.56 10.56L150 12L149.44 10.56L148 10L149.44 9.44Z' fill='%23ffffff' opacity='0.5'/%3E%3Ccircle cx='80' cy='40' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='190' cy='60' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='40' cy='90' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='140' cy='120' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='250' cy='170' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='90' cy='190' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='200' cy='210' r='1' fill='white' opacity='.5'/%3E%3Ccircle cx='10' cy='170' r='1' fill='white' opacity='.5'/%3E%3C/svg%3E");
+  background-size: 260px 260px;
+  animation:
+    drift-260 22s linear infinite,
+    twinkle 1.8s ease-in-out infinite alternate;
+}
+
+/* The moon stays put; z-index -1 keeps it behind the hand, on top of the cloth. */
+[data-theme='magic'] .viewer::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 8%;
+  right: 8%;
+  width: clamp(3rem, 9vmin, 6rem);
+  aspect-ratio: 1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M62 8A44 44 0 1 0 92 70A36 36 0 1 1 62 8Z' fill='%23f6f1d8'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 18px rgba(246, 241, 216, 0.55));
+}
+
 @keyframes fall-240 {
   to {
     transform: translateY(240px);
@@ -873,6 +926,12 @@ fieldset.bare {
 @keyframes fall-200 {
   to {
     transform: translateY(200px);
+  }
+}
+
+@keyframes drift-260 {
+  to {
+    transform: translate(260px, -260px);
   }
 }
 
