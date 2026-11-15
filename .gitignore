@@ -12,5 +12,9 @@ playwright-report/
 .dev.vars
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/launch.json
+.vs/
+bin/
+obj/
 .idea/

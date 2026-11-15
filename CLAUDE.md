@@ -35,5 +35,5 @@ npm run preview      # serve dist/ locally
 - Assets (models, HDRIs, stickers) need a licence that allows this use; record source and licence in `public/assets/CREDITS.md`.
 - No unused constants or exports, no hidden side effects (functions that mutate their arguments).
 - Do not invent requirements; they are in the plan. If unclear, ask.
-- The owner develops on Windows: keep scripts cross-platform (no bash-only npm scripts), line endings LF via `.gitattributes`.
+- The owner develops on Windows in Visual Studio (`NailSalon.slnx`, a JavaScript project `NailSalon.esproj`; F5 runs `npm run dev` on port 5173). Keep scripts cross-platform (no bash-only npm scripts); line endings LF via `.gitattributes`.
 - Work on a branch (`feat/`, `fix/`), not on `main`. Do not merge; the user does that.
