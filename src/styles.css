@@ -332,6 +332,11 @@ input[type='checkbox'] {
   border-radius: 50%;
 }
 
+.swatch[aria-pressed='true'] {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
 .choice {
   background: var(--field);
   border-color: rgba(var(--accent-rgb), 0.4);

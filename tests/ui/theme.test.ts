@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_THEME, THEME_LABELS, THEMES, parseTheme } from '../../src/ui/theme';
+import { DEFAULT_THEME, SCENE_LIGHT, THEME_LABELS, THEMES, parseTheme } from '../../src/ui/theme';
 
 describe('theme', () => {
   it('knows the five themes of TriominosTheGame', () => {
@@ -20,5 +20,14 @@ describe('theme', () => {
     expect(parseTheme(undefined)).toBe(DEFAULT_THEME);
     expect(parseTheme('neon')).toBe(DEFAULT_THEME);
     expect(parseTheme('toString')).toBe(DEFAULT_THEME);
+  });
+});
+
+describe('scene light', () => {
+  it('has a lamp and sky colour for every theme', () => {
+    for (const theme of THEMES) {
+      expect(SCENE_LIGHT[theme].sun).toMatch(/^#[0-9a-f]{6}$/);
+      expect(SCENE_LIGHT[theme].sky).toMatch(/^#[0-9a-f]{6}$/);
+    }
   });
 });

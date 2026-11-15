@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Editor } from './Editor';
+import { loadSkin, saveSkin } from './skin';
 import { loadTheme, saveTheme } from './theme';
 
 export function App() {
   const [theme, setTheme] = useState(loadTheme);
+
+  const [skin, setSkin] = useState(loadSkin);
+
+  useEffect(() => saveSkin(skin), [skin]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -16,7 +21,7 @@ export function App() {
         <h1 className="title">NailSalon</h1>
       </header>
       <main>
-        <Editor theme={theme} onThemeChange={setTheme} />
+        <Editor theme={theme} onThemeChange={setTheme} skin={skin} onSkinChange={setSkin} />
       </main>
     </>
   );
