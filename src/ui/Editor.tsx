@@ -2,6 +2,7 @@ import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspe
 import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
 import { NailPaint } from '../scene/nailPaint';
 import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
+import { HAND_SIDE_LABELS, HAND_SIDES, type HandSide } from './handSide';
 import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
@@ -35,9 +36,11 @@ interface EditorProps {
   readonly onThemeChange: (theme: Theme) => void;
   readonly skin: SkinToneId;
   readonly onSkinChange: (skin: SkinToneId) => void;
+  readonly handSide: HandSide;
+  readonly onHandSideChange: (side: HandSide) => void;
 }
 
-export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps) {
+export function Editor({ theme, onThemeChange, skin, onSkinChange, handSide, onHandSideChange }: EditorProps) {
   const [history, dispatch] = useReducer(reducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
   const [selected, setSelected] = useState<Finger | null>(null);
   const [allNails, setAllNails] = useState(false);
@@ -118,7 +121,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
     <div className="editor" ref={editorRef} style={{ ['--tools-width' as string]: `${toolsWidth}px` }}>
       <div className="viewer">
         <Suspense fallback={<p className="loading">Hand laden…</p>}>
-          <HandScene design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
+          <HandScene design={design} selected={allNails ? null : selected} theme={theme} handSide={handSide} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
         </Suspense>
         <div className="vignette" />
       </div>
@@ -284,6 +287,16 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
           )}
           <details className="settings">
             <summary>⚙️ Instellingen</summary>
+            <fieldset>
+              <legend>Hand</legend>
+              <div className="choices">
+                {HAND_SIDES.map((side) => (
+                  <button key={side} type="button" className="choice" aria-pressed={side === handSide} onClick={() => onHandSideChange(side)}>
+                    {HAND_SIDE_LABELS[side]}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <fieldset>
               <legend>Huidskleur</legend>
               <div className="swatches">

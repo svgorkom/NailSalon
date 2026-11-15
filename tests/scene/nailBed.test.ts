@@ -1,6 +1,6 @@
 import { Object3D } from 'three';
 import { describe, expect, it } from 'vitest';
-import { findNailAnchors, NAIL_ANCHOR_NAMES, readNailBed } from '../../src/scene/nailBed';
+import { findNailAnchors, mirrorNailBed, NAIL_ANCHOR_NAMES, readNailBed } from '../../src/scene/nailBed';
 
 const EXTRAS = { nailWidth: 0.008, bedLength: 0.012, gx: 0.1, gy: 0.2, gxx: -30, gxy: 5, gyy: -2 };
 
@@ -41,5 +41,23 @@ describe('findNailAnchors', () => {
 
   it('throws when an anchor is missing', () => {
     expect(() => findNailAnchors(hand(['NailBed_Thumb']))).toThrow(/NailBed_Index/);
+  });
+});
+
+describe('mirrorNailBed', () => {
+  const bed = readNailBed(EXTRAS);
+
+  it('changes the sign of the terms that are odd in x only', () => {
+    expect(mirrorNailBed(bed)).toEqual({ width: 0.008, length: 0.012, curve: { gx: -0.1, gy: 0.2, gxx: -30, gxy: -5, gyy: -2 } });
+  });
+
+  it('is its own inverse and leaves its argument alone', () => {
+    expect(mirrorNailBed(mirrorNailBed(bed))).toEqual(bed);
+    expect(bed.curve.gx).toBe(0.1);
+  });
+
+  it('keeps a point on the surface when x is flipped', () => {
+    const height = (b: typeof bed, x: number, y: number) => b.curve.gx * x + b.curve.gy * y + b.curve.gxx * x * x + b.curve.gxy * x * y + b.curve.gyy * y * y;
+    expect(height(mirrorNailBed(bed), -0.003, 0.01)).toBeCloseTo(height(bed, 0.003, 0.01), 12);
   });
 });

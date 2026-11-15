@@ -14,6 +14,15 @@ export interface NailBed {
   readonly curve: { readonly gx: number; readonly gy: number; readonly gxx: number; readonly gxy: number; readonly gyy: number };
 }
 
+/**
+ * The same nail bed seen in a frame whose x axis is flipped: the terms of the surface that are odd in x change sign.
+ * Nail content in a flipped frame (the left hand) then lies on the same surface as in the original frame.
+ */
+export function mirrorNailBed(bed: NailBed): NailBed {
+  const { gx, gy, gxx, gxy, gyy } = bed.curve;
+  return { ...bed, curve: { gx: -gx, gy, gxx, gxy: -gxy, gyy } };
+}
+
 /** Node names of the nail anchors in `hand.glb`: one empty per finger, a child of the last finger bone. */
 export const NAIL_ANCHOR_NAMES: Readonly<Record<Finger, string>> = {
   thumb: 'NailBed_Thumb',

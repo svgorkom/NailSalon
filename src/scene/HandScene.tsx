@@ -3,10 +3,11 @@ import { Canvas, createPortal, type ThreeEvent, useThree } from '@react-three/fi
 import { Fragment, useEffect, useMemo } from 'react';
 import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
 import { type Design, type Finger, FINGERS, type Finish, type Gem, type GemKind, type Nail } from '../core';
+import type { HandSide } from '../ui/handSide';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
 import { CLEAR_GEM, createGemGeometries, GEM_MATERIALS, gemOrientation } from './gems';
-import { findNailAnchors, type NailAnchor, type NailBed } from './nailBed';
+import { findNailAnchors, mirrorNailBed, type NailAnchor, type NailBed } from './nailBed';
 import { createNailGeometry, surfaceFrame } from './nailGeometry';
 import type { NailPaint } from './nailPaint';
 import { nearestFinger, type Point } from './picking';
@@ -15,6 +16,8 @@ interface HandSceneProps {
   readonly design: Design;
   readonly selected: Finger | null;
   readonly theme: Theme;
+  /** The model is a right hand; the left hand is mirrored. */
+  readonly handSide: HandSide;
   /** Base colour of the skin. */
   readonly skin: string;
   /** Holds the texture of each nail: base colour, drawing and stickers. */
@@ -26,6 +29,10 @@ const HAND_URL = `${import.meta.env.BASE_URL}assets/hand/hand.glb`;
 
 /** The model is in metres, with the wrist at the origin, fingers along +y and the back of the hand towards +z. */
 const HAND_SCALE = 12;
+/** The left hand is the right hand mirrored in x; three.js flips the face winding for a negative scale. */
+const MIRRORED_HAND_SCALE = [-HAND_SCALE, HAND_SCALE, HAND_SCALE] as const;
+const FLIP_X = [-1, 1, 1] as const;
+const KEEP = [1, 1, 1] as const;
 /** Looking at the middle of the hand; the arm runs off the bottom of the view. */
 const VIEW_TARGET = [0, 1, 0] as const;
 const VIEW_POSITION = [0, 1, 4.6] as const;
@@ -43,7 +50,7 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
 
 useGLTF.preload(HAND_URL);
 
-export function HandScene({ design, selected, theme, skin, paint, onSelect }: HandSceneProps) {
+export function HandScene({ design, selected, theme, handSide, skin, paint, onSelect }: HandSceneProps) {
   return (
     <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: VIEW_POSITION, fov: 40 }} data-testid="hand-scene">
       <ambientLight intensity={0.3} color={SCENE_LIGHT[theme].sky} />
@@ -53,7 +60,7 @@ export function HandScene({ design, selected, theme, skin, paint, onSelect }: Ha
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Hand design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
+      <Hand design={design} selected={selected} handSide={handSide} skin={skin} paint={paint} onSelect={onSelect} />
       <OrbitControls makeDefault zoomToCursor target={VIEW_TARGET} minDistance={1.2} maxDistance={9} />
     </Canvas>
   );
@@ -62,15 +69,23 @@ export function HandScene({ design, selected, theme, skin, paint, onSelect }: Ha
 interface HandProps {
   readonly design: Design;
   readonly selected: Finger | null;
+  readonly handSide: HandSide;
   readonly skin: string;
   readonly paint: NailPaint;
   readonly onSelect: (finger: Finger) => void;
 }
 
-function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
+function Hand({ design, selected, handSide, skin, paint, onSelect }: HandProps) {
   const { scene } = useGLTF(HAND_URL);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene), [scene]);
+  const left = handSide === 'left';
+  // Mirroring the hand mirrors the nails on it too. Their content is flipped back so that the nail looks like the drawing pad,
+  // on a nail bed that is flipped with it so that the content stays on the nail surface.
+  const nailAnchors = useMemo(
+    () => (left ? (Object.fromEntries(FINGERS.map((finger) => [finger, { node: anchors[finger].node, bed: mirrorNailBed(anchors[finger].bed) }])) as Record<Finger, NailAnchor>) : anchors),
+    [anchors, left],
+  );
   const gemGeometries = useMemo(() => createGemGeometries(), []);
   useEffect(() => () => Object.values(gemGeometries).forEach((geometry) => geometry.dispose()), [gemGeometries]);
 
@@ -92,17 +107,17 @@ function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
   };
 
   return (
-    <group scale={HAND_SCALE}>
+    <group scale={left ? MIRRORED_HAND_SCALE : HAND_SCALE}>
       <primitive object={scene} onClick={pick} />
       {FINGERS.map((finger) => (
         <Fragment key={finger}>
           {createPortal(
-            <>
-              <NailMesh finger={finger} nail={design.nails[finger]} anchor={anchors[finger]} paint={paint} isSelected={finger === selected} onSelect={() => onSelect(finger)} />
+            <group scale={left ? FLIP_X : KEEP}>
+              <NailMesh finger={finger} nail={design.nails[finger]} anchor={nailAnchors[finger]} paint={paint} isSelected={finger === selected} onSelect={() => onSelect(finger)} />
               {design.nails[finger].gems.map((gem) => (
-                <GemMesh key={`${gem.id}-${gem.clear}`} gem={gem} nail={design.nails[finger]} bed={anchors[finger].bed} geometries={gemGeometries} onSelect={() => onSelect(finger)} />
+                <GemMesh key={`${gem.id}-${gem.clear}`} gem={gem} nail={design.nails[finger]} bed={nailAnchors[finger].bed} geometries={gemGeometries} onSelect={() => onSelect(finger)} />
               ))}
-            </>,
+            </group>,
             anchors[finger].node,
           )}
         </Fragment>
