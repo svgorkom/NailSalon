@@ -36,8 +36,46 @@ export interface Sticker {
   readonly rotation: number;
 }
 
-/** The part of a sticker that can change after it was placed. */
+/** The part of a sticker or gem that can change after it was placed. */
 export type StickerPlacement = Pick<Sticker, 'x' | 'y' | 'size' | 'rotation'>;
+
+/** Rhinestones and pearls glued on the nail. Unlike stickers they are 3D objects on top of the nail. */
+export const GEM_KINDS = ['diamond', 'pearl', 'heart'] as const;
+export type GemKind = (typeof GEM_KINDS)[number];
+
+export const MIN_GEM_SIZE = 0.06;
+export const MAX_GEM_SIZE = 0.5;
+
+/** A gem has the same placement as a sticker; positions and sizes use the same fractions of the nail. */
+export interface Gem extends StickerPlacement {
+  /** Unique among the gems of a nail. */
+  readonly id: string;
+  readonly kind: GemKind;
+  readonly color: HexColor;
+  /** Clear glass that lets the nail show through, tinted by the colour; otherwise solid. */
+  readonly clear: boolean;
+}
+
+/** The part of a gem's look that can change after it was placed. */
+export type GemLook = Pick<Gem, 'color' | 'clear'>;
+
+/** Depth of a French tip, measured from the free edge, as a fraction of the whole nail length. */
+export const MIN_FRENCH_DEPTH = 0.05;
+export const MAX_FRENCH_DEPTH = 0.5;
+
+/** A French tip: the free edge in its own colour, ending in a curved smile line. */
+export interface FrenchTip {
+  readonly color: HexColor;
+  readonly depth: number;
+}
+
+interface SizeLimits {
+  readonly min: number;
+  readonly max: number;
+}
+
+const STICKER_SIZES: SizeLimits = { min: MIN_STICKER_SIZE, max: MAX_STICKER_SIZE };
+const GEM_SIZES: SizeLimits = { min: MIN_GEM_SIZE, max: MAX_GEM_SIZE };
 
 function isUnit(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 1;
@@ -63,13 +101,44 @@ export function assertSticker(sticker: Sticker): void {
   assertPlacement(sticker);
 }
 
-/** Throws RangeError unless the placement is valid. */
+/** Throws RangeError unless the gem is valid. */
+export function assertGem(gem: Gem): void {
+  if (gem.id.length === 0) throw new RangeError('Gem id must not be empty.');
+  if (!GEM_KINDS.includes(gem.kind)) throw new RangeError('Unknown gem.');
+  assertGemLook(gem);
+  assertGemPlacement(gem);
+}
+
+/** Throws RangeError unless the colour is valid and `clear` is a boolean. */
+export function assertGemLook(look: GemLook): void {
+  if (!isHexColor(look.color)) throw new RangeError('Gem colour must be #rrggbb.');
+  if (typeof look.clear !== 'boolean') throw new RangeError('Gem clear must be true or false.');
+}
+
+/** Throws RangeError unless the placement is valid for a sticker. */
 export function assertPlacement(placement: StickerPlacement): void {
-  if (!isUnit(placement.x) || !isUnit(placement.y)) throw new RangeError('Sticker position must be between 0 and 1.');
-  if (!Number.isFinite(placement.size) || placement.size < MIN_STICKER_SIZE || placement.size > MAX_STICKER_SIZE) {
-    throw new RangeError(`Sticker size must be between ${MIN_STICKER_SIZE} and ${MAX_STICKER_SIZE}.`);
+  checkPlacement(placement, STICKER_SIZES, 'Sticker');
+}
+
+/** Throws RangeError unless the placement is valid for a gem. */
+export function assertGemPlacement(placement: StickerPlacement): void {
+  checkPlacement(placement, GEM_SIZES, 'Gem');
+}
+
+function checkPlacement(placement: StickerPlacement, sizes: SizeLimits, what: string): void {
+  if (!isUnit(placement.x) || !isUnit(placement.y)) throw new RangeError(`${what} position must be between 0 and 1.`);
+  if (!Number.isFinite(placement.size) || placement.size < sizes.min || placement.size > sizes.max) {
+    throw new RangeError(`${what} size must be between ${sizes.min} and ${sizes.max}.`);
   }
-  if (!Number.isFinite(placement.rotation)) throw new RangeError('Sticker rotation must be a number.');
+  if (!Number.isFinite(placement.rotation)) throw new RangeError(`${what} rotation must be a number.`);
+}
+
+/** Throws RangeError unless the French tip is valid. */
+export function assertFrenchTip(french: FrenchTip): void {
+  if (!isHexColor(french.color)) throw new RangeError('French tip colour must be #rrggbb.');
+  if (!Number.isFinite(french.depth) || french.depth < MIN_FRENCH_DEPTH || french.depth > MAX_FRENCH_DEPTH) {
+    throw new RangeError(`French tip depth must be between ${MIN_FRENCH_DEPTH} and ${MAX_FRENCH_DEPTH}.`);
+  }
 }
 
 /** Brings a rotation in degrees into 0 (inclusive) to 360 (exclusive). */

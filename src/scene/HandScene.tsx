@@ -1,12 +1,13 @@
 import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, createPortal, type ThreeEvent, useThree } from '@react-three/fiber';
 import { Fragment, useEffect, useMemo } from 'react';
-import { CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
-import { type Design, type Finger, FINGERS, type Finish, type Nail } from '../core';
+import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
+import { type Design, type Finger, FINGERS, type Finish, type Gem, type GemKind, type Nail } from '../core';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
-import { findNailAnchors, type NailAnchor } from './nailBed';
-import { createNailGeometry } from './nailGeometry';
+import { CLEAR_GEM, createGemGeometries, GEM_MATERIALS, gemOrientation } from './gems';
+import { findNailAnchors, type NailAnchor, type NailBed } from './nailBed';
+import { createNailGeometry, surfaceFrame } from './nailGeometry';
 import type { NailPaint } from './nailPaint';
 import { nearestFinger, type Point } from './picking';
 
@@ -70,6 +71,8 @@ function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
   const { scene } = useGLTF(HAND_URL);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene), [scene]);
+  const gemGeometries = useMemo(() => createGemGeometries(), []);
+  useEffect(() => () => Object.values(gemGeometries).forEach((geometry) => geometry.dispose()), [gemGeometries]);
 
   useEffect(() => {
     const [r, g, b] = skinTint(skin);
@@ -94,7 +97,12 @@ function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
       {FINGERS.map((finger) => (
         <Fragment key={finger}>
           {createPortal(
-            <NailMesh finger={finger} nail={design.nails[finger]} anchor={anchors[finger]} paint={paint} isSelected={finger === selected} onSelect={() => onSelect(finger)} />,
+            <>
+              <NailMesh finger={finger} nail={design.nails[finger]} anchor={anchors[finger]} paint={paint} isSelected={finger === selected} onSelect={() => onSelect(finger)} />
+              {design.nails[finger].gems.map((gem) => (
+                <GemMesh key={`${gem.id}-${gem.clear}`} gem={gem} nail={design.nails[finger]} bed={anchors[finger].bed} geometries={gemGeometries} onSelect={() => onSelect(finger)} />
+              ))}
+            </>,
             anchors[finger].node,
           )}
         </Fragment>
@@ -158,6 +166,49 @@ function NailMesh({ finger, nail, paint, anchor, isSelected, onSelect }: NailMes
         clearcoat={material.clearcoat}
         emissive={isSelected ? '#ffffff' : '#000000'}
         emissiveIntensity={isSelected ? 0.15 : 0}
+      />
+    </mesh>
+  );
+}
+
+interface GemMeshProps {
+  readonly gem: Gem;
+  readonly nail: Nail;
+  readonly bed: NailBed;
+  readonly geometries: Readonly<Record<GemKind, BufferGeometry>>;
+  readonly onSelect: () => void;
+}
+
+/** A gem standing on the nail at its texture position. Its size is a fraction of the nail width, as on the pad. */
+function GemMesh({ gem, nail, bed, geometries, onSelect }: GemMeshProps) {
+  // The texture y runs from the free edge down; the mesh v from the cuticle up.
+  const frame = useMemo(() => surfaceFrame(nail.shape, nail.length, bed, gem.x, 1 - gem.y), [nail.shape, nail.length, bed, gem.x, gem.y]);
+  const quaternion = useMemo(() => gemOrientation(frame, gem.rotation), [frame, gem.rotation]);
+  const material = gem.clear ? CLEAR_GEM : GEM_MATERIALS[gem.kind];
+  return (
+    <mesh
+      geometry={geometries[gem.kind]}
+      position={frame.position}
+      quaternion={quaternion}
+      scale={gem.size * bed.width}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+    >
+      <meshPhysicalMaterial
+        color={gem.color}
+        metalness={material.metalness}
+        roughness={material.roughness}
+        clearcoat={material.clearcoat}
+        iridescence={material.iridescence}
+        sheen={material.sheen}
+        sheenColor="#ffffff"
+        flatShading={material.flatShading}
+        transmission={material.transmission}
+        ior={material.ior}
+        thickness={gem.size * bed.width * material.thickness}
+        envMapIntensity={1.6}
       />
     </mesh>
   );

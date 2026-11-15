@@ -1,4 +1,4 @@
-import { type Design, type Finger, FINGERS, type Nail, type Sticker, type Stroke } from '../core';
+import { type Design, type Finger, FINGERS, type FrenchTip, type Gem, type Nail, type Sticker, type Stroke } from '../core';
 import { STICKER_PATHS } from './stickerShapes';
 
 /** Size of the texture of one nail. Positions in the design are fractions of these. */
@@ -63,15 +63,84 @@ export function paintSticker(ctx: CanvasRenderingContext2D, sticker: Sticker): v
   ctx.restore();
 }
 
+/** A clear gem shows on the pad as a see-through shape. */
+const CLEAR_GEM_ALPHA = 0.4;
+
 /**
- * Puts a nail together: base colour, then the drawing layer, then the stickers, all inside the outline.
- * Outside the outline the surface stays transparent.
+ * A flat picture of a gem for the drawing pad: its shape in its colour with a white glint. The 3D nail shows the gem
+ * itself, so this is never painted on the nail texture.
+ */
+export function paintGem(ctx: CanvasRenderingContext2D, gem: Gem): void {
+  const radius = (gem.size * TEXTURE_WIDTH) / 2;
+  ctx.save();
+  ctx.translate(gem.x * TEXTURE_WIDTH, gem.y * TEXTURE_HEIGHT);
+  ctx.rotate((gem.rotation * Math.PI) / 180);
+  ctx.globalAlpha = gem.clear ? CLEAR_GEM_ALPHA : 1;
+  ctx.fillStyle = gem.color;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.lineWidth = Math.max(1, radius / 10);
+  if (gem.kind === 'heart') {
+    ctx.save();
+    ctx.scale(radius / 50, radius / 50);
+    ctx.fill(stickerPath('heart'));
+    ctx.restore();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (gem.kind === 'diamond') {
+    // The table and the facets running from it to the rim.
+    const table = radius * 0.45;
+    ctx.beginPath();
+    for (let index = 0; index < 8; index++) {
+      const angle = (Math.PI * index) / 4;
+      ctx.moveTo(table * Math.cos(angle), table * Math.sin(angle));
+      ctx.lineTo(radius * Math.cos(angle + Math.PI / 8), radius * Math.sin(angle + Math.PI / 8));
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.beginPath();
+  ctx.arc(-radius * 0.3, -radius * 0.3, radius * 0.18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** The smile line of a French tip lies this much closer to the free edge in the middle than at the sides. */
+const SMILE = 0.35;
+
+/**
+ * Paints a French tip: the top of the texture (the free edge) down to `depth`, ending in a smile line that is deepest
+ * at the sides of the nail.
+ */
+export function paintFrenchTip(ctx: CanvasRenderingContext2D, french: FrenchTip): void {
+  const side = french.depth * TEXTURE_HEIGHT;
+  const middle = side * (1 - SMILE);
+  ctx.save();
+  ctx.fillStyle = french.color;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(TEXTURE_WIDTH, 0);
+  ctx.lineTo(TEXTURE_WIDTH, side);
+  // A quadratic curve passes its control point halfway, so this one reaches `middle` in the centre.
+  ctx.quadraticCurveTo(TEXTURE_WIDTH / 2, 2 * middle - side, 0, side);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Puts a nail together: base colour, then the French tip, then the drawing layer, then the stickers.
+ * Gems are not painted; the scene shows them as 3D objects.
  */
 export function paintNail(ctx: CanvasRenderingContext2D, nail: Nail, drawing: CanvasImageSource): void {
   ctx.clearRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   ctx.save();
   ctx.fillStyle = nail.color;
   ctx.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+  if (nail.french !== null) paintFrenchTip(ctx, nail.french);
   ctx.drawImage(drawing, 0, 0);
   for (const sticker of nail.stickers) paintSticker(ctx, sticker);
   ctx.restore();

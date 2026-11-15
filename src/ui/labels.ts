@@ -1,4 +1,4 @@
-import type { Finger, Finish, NailShape, StickerKind } from '../core';
+import type { Finger, Finish, GemKind, NailShape, StickerKind } from '../core';
 
 /** Dutch user-facing names. */
 export const FINGER_LABELS: Readonly<Record<Finger, string>> = {
@@ -45,4 +45,10 @@ export const STICKER_LABELS: Readonly<Record<StickerKind, string>> = {
   sparkle: 'Schittering',
   moon: 'Maan',
   butterfly: 'Vlinder',
+};
+
+export const GEM_LABELS: Readonly<Record<GemKind, string>> = {
+  diamond: 'Diamantje',
+  pearl: 'Parel',
+  heart: 'Hartje',
 };

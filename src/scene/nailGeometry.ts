@@ -25,16 +25,76 @@ export interface NailMesh {
   readonly indices: Uint32Array;
 }
 
+type Vec3 = readonly [number, number, number];
+
+/**
+ * The top surface of a nail. `point(y, s, q)` gives the position for y along the nail (metres from the cuticle), s along
+ * the free edge (0 at its start, 1 at the tip; 0 over the nail bed) and q across the nail (-1 left to 1 right).
+ */
+function nailSurface(shape: NailShape, length: number, bed: NailBed) {
+  const halfWidth = bed.width / 2;
+  const total = bed.length * (1 + freeEdgeRatio(length));
+  const { gx, gy, gxx, gxy, gyy } = bed.curve;
+  const point = (y: number, s: number, q: number): Vec3 => {
+    const base = Math.min(y / (CUTICLE_ZONE * bed.length), 1);
+    const half = Math.max(halfWidth * (1 - CUTICLE_PULL * (1 - base) ** 2) * (s > 0 ? tipWidth(shape, s) : 1), MIN_HALF_WIDTH);
+    const x = q * half;
+    const yCurved = y + CUTICLE_PULL * halfWidth * q * q * (1 - base) ** 3;
+    const yBed = Math.min(yCurved, bed.length);
+    const beyond = Math.max(yCurved - bed.length, 0);
+    const slope = Math.min(Math.max(gy + gxy * x + 2 * gyy * bed.length, MIN_SLOPE), MAX_SLOPE);
+    const z = gx * x + gy * yBed + gxx * x * x + gxy * x * yBed + gyy * yBed * yBed + slope * beyond - BEND * beyond * beyond + LIFT;
+    return [x, yCurved, z];
+  };
+  return { total, point };
+}
+
+/** A point on the top of the nail and the direction straight up from it, in the frame of the anchor. */
+export interface SurfaceFrame {
+  readonly position: Vec3;
+  readonly normal: Vec3;
+}
+
+/** Step for the tangents, in texture coordinates. */
+const TANGENT_STEP = 0.01;
+
+/**
+ * Where a texture position lies on the nail: `u` across (0..1, as the texture x) and `v` from the cuticle to the tip
+ * (0..1, as the mesh uv; the texture y is `1 - v`). Matches the mesh, so a gem sits on what the texture shows there.
+ */
+export function surfaceFrame(shape: NailShape, length: number, bed: NailBed, u: number, v: number): SurfaceFrame {
+  const { total, point } = nailSurface(shape, length, bed);
+  const at = (uu: number, vv: number): Vec3 => {
+    const y = Math.min(Math.max(vv, 0), 1) * total;
+    const s = y > bed.length ? (y - bed.length) / (total - bed.length) : 0;
+    return point(y, s, 2 * Math.min(Math.max(uu, 0), 1) - 1);
+  };
+  const across = subtract(at(u + TANGENT_STEP, v), at(u - TANGENT_STEP, v));
+  const along = subtract(at(u, v + TANGENT_STEP), at(u, v - TANGENT_STEP));
+  return { position: at(u, v), normal: normalise(cross(across, along)) };
+}
+
+function subtract(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function normalise(a: Vec3): Vec3 {
+  const size = Math.hypot(...a);
+  return size === 0 ? [0, 0, 1] : [a[0] / size, a[1] / size, a[2] / size];
+}
+
 /**
  * The mesh of one nail in the frame of its anchor: a thin plate that follows the nail bed and continues as the free edge
  * with the outline of `shape`. u runs across the nail (0..1), v from the cuticle to the tip (0..1).
  * `length` is the nail length from 0 (short) to 1 (extra long).
  */
 export function buildNailMesh(shape: NailShape, length: number, bed: NailBed): NailMesh {
-  const halfWidth = bed.width / 2;
-  const free = bed.length * freeEdgeRatio(length);
-  const total = bed.length + free;
-  const { gx, gy, gxx, gxy, gyy } = bed.curve;
+  const { total, point } = nailSurface(shape, length, bed);
+  const free = total - bed.length;
 
   const rows: { y: number; s: number }[] = [];
   for (let k = 0; k <= BED_ROWS; k++) rows.push({ y: (bed.length * k) / BED_ROWS, s: 0 });
@@ -47,18 +107,10 @@ export function buildNailMesh(shape: NailShape, length: number, bed: NailBed): N
   const top = new Float32Array(gridSize * 3);
   const topUv = new Float32Array(gridSize * 2);
   rows.forEach(({ y, s }, r) => {
-    const base = Math.min(y / (CUTICLE_ZONE * bed.length), 1);
-    const half = Math.max(halfWidth * (1 - CUTICLE_PULL * (1 - base) ** 2) * (s > 0 ? tipWidth(shape, s) : 1), MIN_HALF_WIDTH);
     for (let c = 0; c < COLUMNS; c++) {
       const q = (2 * c) / (COLUMNS - 1) - 1;
-      const x = q * half;
-      const yCurved = y + CUTICLE_PULL * halfWidth * q * q * (1 - base) ** 3;
-      const yBed = Math.min(yCurved, bed.length);
-      const beyond = Math.max(yCurved - bed.length, 0);
-      const slope = Math.min(Math.max(gy + gxy * x + 2 * gyy * bed.length, MIN_SLOPE), MAX_SLOPE);
-      const z = gx * x + gy * yBed + gxx * x * x + gxy * x * yBed + gyy * yBed * yBed + slope * beyond - BEND * beyond * beyond + LIFT;
       const i = r * COLUMNS + c;
-      top.set([x, yCurved, z], i * 3);
+      top.set(point(y, s, q), i * 3);
       topUv.set([(q + 1) / 2, y / total], i * 2);
     }
   });

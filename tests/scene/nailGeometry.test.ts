@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NAIL_SHAPES } from '../../src/core';
 import type { NailBed } from '../../src/scene/nailBed';
-import { buildNailMesh, createNailGeometry } from '../../src/scene/nailGeometry';
+import { buildNailMesh, createNailGeometry, surfaceFrame } from '../../src/scene/nailGeometry';
 
 /** The index finger of the hand model. */
 const BED: NailBed = { width: 0.00816, length: 0.01245, curve: { gx: -0.0883, gy: 0.1588, gxx: -45.17, gxy: 11.91, gyy: -5.71 } };
@@ -80,5 +80,39 @@ describe('createNailGeometry', () => {
     expect(normals.count).toBe(geometry.getAttribute('position').count);
     expect(Array.from(normals.array).every(Number.isFinite)).toBe(true);
     geometry.dispose();
+  });
+});
+
+describe('surfaceFrame', () => {
+  it('lies on the top of the mesh at the same texture position', () => {
+    const { positions, uvs } = buildNailMesh('oval', 0.5, BED);
+    // Vertex 5 of row 6 (on the nail bed) and of row 20 (on the free edge).
+    for (const index of [6 * 13 + 5, 20 * 13 + 5]) {
+      const [u, v] = [uvs[index * 2] ?? 0, uvs[index * 2 + 1] ?? 0];
+      const { position } = surfaceFrame('oval', 0.5, BED, u, v);
+      for (const axis of [0, 1, 2]) expect(position[axis]).toBeCloseTo(positions[index * 3 + axis] ?? 0, 6);
+    }
+  });
+
+  it('points straight up on a flat nail bed', () => {
+    const { normal } = surfaceFrame('square', 0.3, FLAT, 0.5, 0.3);
+
+    expect(normal[0]).toBeCloseTo(0, 6);
+    expect(normal[1]).toBeCloseTo(0, 6);
+    expect(normal[2]).toBeCloseTo(1, 6);
+  });
+
+  it('tilts outwards towards the sides of a curved nail', () => {
+    const left = surfaceFrame('oval', 0.3, BED, 0.1, 0.3).normal;
+    const right = surfaceFrame('oval', 0.3, BED, 0.9, 0.3).normal;
+
+    expect(left[0]).toBeLessThan(0);
+    expect(right[0]).toBeGreaterThan(0);
+  });
+
+  it('stays finite at the pointed tip of a stiletto', () => {
+    const { position, normal } = surfaceFrame('stiletto', 1, BED, 0.5, 1);
+
+    expect([...position, ...normal].every(Number.isFinite)).toBe(true);
   });
 });

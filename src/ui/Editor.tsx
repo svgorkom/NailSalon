@@ -1,7 +1,7 @@
 import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINGERS, FINISHES, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
+import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
 import { NailPaint } from '../scene/nailPaint';
-import { ColorTool, DrawTools, StickerTools } from './DecorationTools';
+import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
 import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
@@ -10,9 +10,12 @@ import { clampToolsWidth, loadToolsWidth, saveToolsWidth } from './toolsWidth';
 
 const HandScene = lazy(() => import('../scene/HandScene').then((module) => ({ default: module.HandScene })));
 
-type Mode = 'look' | 'draw' | 'sticker';
+type Mode = 'look' | 'draw' | 'sticker' | 'gem';
 
-const MODE_LABELS: Readonly<Record<Mode, string>> = { look: '💅 Lak', draw: '✏️ Tekenen', sticker: '⭐ Stickers' };
+const MODE_LABELS: Readonly<Record<Mode, string>> = { look: '💅 Lak', draw: '✏️ Tekenen', sticker: '⭐ Stickers', gem: '💎 Steentjes' };
+
+/** A French tip when it is turned on: white, over about a quarter of the nail. */
+const NEW_FRENCH: FrenchTip = { color: '#f7f3ee', depth: 0.25 };
 
 type Action = { readonly type: 'command'; readonly command: Command } | { readonly type: 'undo' } | { readonly type: 'redo' };
 
@@ -43,9 +46,11 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const [brushSize, setBrushSize] = useState(0.06);
   const [toolColor, setToolColor] = useState('#c8102e');
   const [stickerKind, setStickerKind] = useState<StickerKind>('heart');
-  const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
+  const [gemKind, setGemKind] = useState<GemKind>('diamond');
+  const [gemClear, setGemClear] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [paint] = useState(() => new NailPaint());
-  const stickerCount = useRef(0);
+  const itemCount = useRef(0);
   const editorRef = useRef<HTMLDivElement>(null);
   const [toolsWidth, setToolsWidth] = useState(loadToolsWidth);
   const design = history.present;
@@ -55,6 +60,10 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   // The pad shows the chosen nail; with all nails it shows the middle finger unless another is chosen.
   const padFinger = selected ?? (allNails ? 'middle' : null);
   const padNail = padFinger === null ? undefined : design.nails[padFinger];
+  const shownNail = design.nails[target === null || target === 'all' ? 'index' : target];
+  // For all nails the French tip shows as on only when every nail has the same one.
+  const frenchShown = target === 'all' ? (FINGERS.every((finger) => JSON.stringify(design.nails[finger].french) === JSON.stringify(shownNail.french)) ? shownNail.french : null) : shownNail.french;
+  const selectedGem = padNail?.gems.find(({ id }) => id === selectedItem);
   const modeLabelId = useId();
   /** Whether a choice is the current one: for one nail its value, for all nails only if every nail has it. */
   const shown = <K extends 'shape' | 'color' | 'finish'>(key: K, value: Nail[K]): boolean =>
@@ -64,6 +73,19 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   useLayoutEffect(() => paint.sync(design), [paint, design]);
 
   const send = (command: Command) => dispatch({ type: 'command', command });
+
+  // In the gem tools a new colour or clearness also changes the selected gem.
+  const restyleGem = (look: { color: string; clear: boolean }) => {
+    if (mode === 'gem' && selectedGem !== undefined && target !== null) send({ type: 'styleGem', target, id: selectedGem.id, look });
+  };
+  const onToolColor = (color: string) => {
+    setToolColor(color);
+    restyleGem({ color, clear: selectedGem?.clear ?? gemClear });
+  };
+  const onGemClear = (clear: boolean) => {
+    setGemClear(clear);
+    restyleGem({ color: selectedGem?.color ?? toolColor, clear });
+  };
 
   // The width follows the pointer through a CSS variable, so dragging does not re-render the editor.
   const widthFor = (clientX: number): number => {
@@ -192,6 +214,10 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                   ))}
                 </div>
               </fieldset>
+              <fieldset disabled={target === null}>
+                <legend>French tip</legend>
+                <FrenchTool french={frenchShown} fallback={NEW_FRENCH} onChange={(french) => target && send({ type: 'setFrench', target, french })} />
+              </fieldset>
             </>
           ) : (
             <>
@@ -200,17 +226,19 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                 target={target}
                 design={design}
                 paint={paint}
-                tool={mode === 'sticker' ? 'sticker' : eraser ? 'eraser' : 'brush'}
+                tool={mode === 'draw' ? (eraser ? 'eraser' : 'brush') : mode}
                 color={toolColor}
                 brushSize={brushSize}
                 stickerKind={stickerKind}
-                selectedSticker={selectedSticker}
+                gemKind={gemKind}
+                gemClear={gemClear}
+                selectedItem={selectedItem}
                 onCommand={send}
-                onSelectSticker={setSelectedSticker}
-                newStickerId={() => `s${(stickerCount.current += 1)}`}
+                onSelectItem={setSelectedItem}
+                newItemId={() => `${mode === 'gem' ? 'g' : 's'}${(itemCount.current += 1)}`}
               />
               <fieldset disabled={target === null} className="bare">
-                <ColorTool color={toolColor} onChange={setToolColor} />
+                <ColorTool color={toolColor} onChange={onToolColor} />
                 {mode === 'draw' ? (
                   <DrawTools
                     eraser={eraser}
@@ -220,15 +248,34 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                     canClear={padNail !== undefined && padNail.strokes.length > 0}
                     onClear={() => target && send({ type: 'clearDrawing', target })}
                   />
-                ) : (
+                ) : mode === 'sticker' ? (
                   <StickerTools
                     kind={stickerKind}
-                    onKindChange={setStickerKind}
-                    selected={padNail?.stickers.find(({ id }) => id === selectedSticker)}
+                    onKindChange={(kind) => {
+                      setStickerKind(kind);
+                      setSelectedItem(null);
+                    }}
+                    selected={padNail?.stickers.find(({ id }) => id === selectedItem)}
                     canClear={padNail !== undefined && padNail.stickers.length > 0}
                     send={send}
                     target={target}
-                    onRemoved={() => setSelectedSticker(null)}
+                    onRemoved={() => setSelectedItem(null)}
+                  />
+                ) : (
+                  <GemTools
+                    kind={gemKind}
+                    onKindChange={(kind) => {
+                      // A new kind starts a new gem, so colour and clearness no longer change the last one.
+                      setGemKind(kind);
+                      setSelectedItem(null);
+                    }}
+                    clear={selectedGem?.clear ?? gemClear}
+                    onClearChange={onGemClear}
+                    selected={selectedGem}
+                    canClear={padNail !== undefined && padNail.gems.length > 0}
+                    send={send}
+                    target={target}
+                    onRemoved={() => setSelectedItem(null)}
                   />
                 )}
               </fieldset>
