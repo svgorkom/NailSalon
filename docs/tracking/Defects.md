@@ -6,7 +6,7 @@
 |---|---|---|
 | D-003 | Visual Studio build failed with EBUSY: the SDK ran `npm install` on every restore and build while node_modules was in use. | `NailSalon.esproj` installs only when `package-lock.json` changed; one copy of `three` (override for `stats-gl`). |
 
-| D-004 | F5 in Visual Studio opened Chrome on an address where nothing listened. | Removed `.vscode/launch.json` (VS debugged with it and skipped `npm run dev`); Vite opens the browser. |
+| D-004 | F5 in Visual Studio opened Chrome on an address where nothing listened, or "startup project cannot be launched". | `.vscode/launch.json` is what the Start button runs; it now starts `npm run dev` (node launch of npm). Set NailSalon as startup project. |
 
 ## Open
 
