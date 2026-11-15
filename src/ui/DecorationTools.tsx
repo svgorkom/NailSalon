@@ -18,24 +18,32 @@ import {
   type StickerPlacement,
   type Target,
 } from '../core';
+import { GemIcon } from './GemIcon';
 import { GEM_LABELS, PALETTE, STICKER_LABELS } from './labels';
 
-interface ColorToolProps {
+interface SwatchesProps {
   readonly color: string;
   readonly onChange: (color: string) => void;
 }
 
+/** The palette and a free colour picker. */
+function Swatches({ color, onChange }: SwatchesProps) {
+  return (
+    <div className="swatches">
+      {PALETTE.map(({ color: swatch, name }) => (
+        <button key={swatch} type="button" className="swatch" style={{ background: swatch }} title={name} aria-label={name} aria-pressed={swatch === color} onClick={() => onChange(swatch)} />
+      ))}
+      <input type="color" className="color-input" value={color} aria-label="Eigen kleur" onChange={(event) => onChange(event.target.value)} />
+    </div>
+  );
+}
+
 /** The colour for the brush and for new stickers. */
-export function ColorTool({ color, onChange }: ColorToolProps) {
+export function ColorTool({ color, onChange }: SwatchesProps) {
   return (
     <fieldset>
       <legend>Kleur</legend>
-      <div className="swatches">
-        {PALETTE.map(({ color: swatch, name }) => (
-          <button key={swatch} type="button" className="swatch" style={{ background: swatch }} title={name} aria-label={name} aria-pressed={swatch === color} onClick={() => onChange(swatch)} />
-        ))}
-        <input type="color" className="color-input" value={color} aria-label="Eigen kleur" onChange={(event) => onChange(event.target.value)} />
-      </div>
+      <Swatches color={color} onChange={onChange} />
     </fieldset>
   );
 }
@@ -51,7 +59,7 @@ interface DrawToolsProps {
 
 export function DrawTools({ eraser, onEraserChange, size, onSizeChange, canClear, onClear }: DrawToolsProps) {
   return (
-    <fieldset>
+    <fieldset className="tool">
       <legend>Tekenen</legend>
       <div className="choices">
         <button type="button" className="choice" aria-pressed={!eraser} onClick={() => onEraserChange(false)}>
@@ -101,19 +109,19 @@ function PlacedActions({ selected, minSize, maxSize, onPlace, onRemove }: Placed
   return (
     <div className="actions">
       <button type="button" disabled={none} onClick={() => adjust({ size: (selected?.size ?? 0) / SIZE_STEP })}>
-        Kleiner
+        − Kleiner
       </button>
       <button type="button" disabled={none} onClick={() => adjust({ size: (selected?.size ?? 0) * SIZE_STEP })}>
-        Groter
+        + Groter
       </button>
-      <button type="button" disabled={none} aria-label="Draai naar links" onClick={() => adjust({ rotation: (selected?.rotation ?? 0) - ROTATION_STEP })}>
-        ↺
+      <button type="button" disabled={none} onClick={() => adjust({ rotation: (selected?.rotation ?? 0) - ROTATION_STEP })}>
+        ↺ Links
       </button>
-      <button type="button" disabled={none} aria-label="Draai naar rechts" onClick={() => adjust({ rotation: (selected?.rotation ?? 0) + ROTATION_STEP })}>
-        ↻
+      <button type="button" disabled={none} onClick={() => adjust({ rotation: (selected?.rotation ?? 0) + ROTATION_STEP })}>
+        ↻ Rechts
       </button>
       <button type="button" disabled={none} onClick={onRemove}>
-        Verwijder
+        🗑️ Verwijder
       </button>
     </div>
   );
@@ -132,7 +140,7 @@ interface StickerToolsProps {
 
 export function StickerTools({ kind, onKindChange, selected, canClear, send, target, onRemoved }: StickerToolsProps) {
   return (
-    <fieldset>
+    <fieldset className="tool">
       <legend>Stickers</legend>
       <div className="choices">
         {STICKER_KINDS.map((each) => (
@@ -163,7 +171,10 @@ export function StickerTools({ kind, onKindChange, selected, canClear, send, tar
 interface GemToolsProps {
   readonly kind: GemKind;
   readonly onKindChange: (kind: GemKind) => void;
-  /** Whether new gems are clear glass. */
+  /** The colour of the selected gem, or of the next one if none is selected. */
+  readonly color: string;
+  readonly onColorChange: (color: string) => void;
+  /** Whether the selected gem, or the next one, is clear glass. */
   readonly clear: boolean;
   readonly onClearChange: (clear: boolean) => void;
   /** The gem that is selected on the nail shown on the pad. */
@@ -174,22 +185,33 @@ interface GemToolsProps {
   readonly onRemoved: () => void;
 }
 
-export function GemTools({ kind, onKindChange, clear, onClearChange, selected, canClear, send, target, onRemoved }: GemToolsProps) {
+export function GemTools({ kind, onKindChange, color, onColorChange, clear, onClearChange, selected, canClear, send, target, onRemoved }: GemToolsProps) {
+  // The kind shown is the selected gem's; choosing another changes that gem, and is also the kind of the next one.
+  const shownKind = selected?.kind ?? kind;
+  const chooseKind = (each: GemKind) => {
+    onKindChange(each);
+    if (selected !== undefined && target !== null) send({ type: 'setGemKind', target, id: selected.id, kind: each });
+  };
   return (
-    <fieldset>
+    <fieldset className="tool">
       <legend>Steentjes</legend>
-      <div className="choices">
+      <div className="gem-kinds">
         {GEM_KINDS.map((each) => (
-          <button key={each} type="button" className="choice" aria-pressed={each === kind} onClick={() => onKindChange(each)}>
+          <button key={each} type="button" className="choice gem-kind" aria-pressed={each === shownKind} onClick={() => chooseKind(each)}>
+            <GemIcon kind={each} color={color} />
             {GEM_LABELS[each]}
           </button>
         ))}
+      </div>
+      <div className="field">
+        <span className="field-label">{selected === undefined ? 'Kleur van het volgende steentje' : 'Kleur van dit steentje'}</span>
+        <Swatches color={color} onChange={onColorChange} />
       </div>
       <label className="toggle">
         <input type="checkbox" role="switch" className="switch" checked={clear} onChange={(event) => onClearChange(event.target.checked)} />
         Doorzichtig
       </label>
-      <p className="hint">Tik op de nagel om te plakken. Tik op een steentje en kies een kleur om hem te veranderen.</p>
+      <p className="hint">{selected === undefined ? 'Kies een vorm en een kleur. Tik op de nagel om te plakken.' : 'Dit steentje is gekozen: pas de vorm, kleur of grootte aan, of sleep het.'}</p>
       <PlacedActions
         selected={selected}
         minSize={MIN_GEM_SIZE}

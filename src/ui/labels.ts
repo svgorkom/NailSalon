@@ -51,4 +51,7 @@ export const GEM_LABELS: Readonly<Record<GemKind, string>> = {
   diamond: 'Diamantje',
   pearl: 'Parel',
   heart: 'Hartje',
+  square: 'Vierkantje',
+  drop: 'Druppel',
+  star: 'Sterretje',
 };

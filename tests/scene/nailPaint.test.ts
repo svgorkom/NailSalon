@@ -110,6 +110,23 @@ describe('paintGem', () => {
   });
 });
 
+describe('paintGem outlines', () => {
+  const gem = { id: 'g1', color: '#3366ff', clear: false, x: 0.5, y: 0.25, size: 0.2, rotation: 0 };
+
+  it.each(['square', 'drop', 'star'] as const)('draws a %s as a closed polygon, with the free edge at the top', (kind) => {
+    const { ctx, log } = recorder();
+    paintGem(ctx, { ...gem, kind });
+
+    const radius = (0.2 * TEXTURE_WIDTH) / 2;
+    expect(log.some((entry) => entry.startsWith('lineTo('))).toBe(true);
+    expect(log).toContain('closePath()');
+    // The free edge is up (negative y) on the pad, and every outline reaches roughly the size of the gem.
+    const ys = log.filter((entry) => /^(moveTo|lineTo)\(/.test(entry)).map((entry) => Number(entry.slice(0, -1).split(',')[1]));
+    expect(Math.min(...ys)).toBeLessThan(-radius * 0.9);
+    expect(Math.max(...ys)).toBeGreaterThan(radius * 0.8);
+  });
+});
+
 describe('paintFrenchTip', () => {
   it('ends deepest at the sides, with a smile line that is shallower in the middle', () => {
     const { ctx, log } = recorder();

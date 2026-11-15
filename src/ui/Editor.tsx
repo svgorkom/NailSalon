@@ -47,6 +47,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const [toolColor, setToolColor] = useState('#c8102e');
   const [stickerKind, setStickerKind] = useState<StickerKind>('heart');
   const [gemKind, setGemKind] = useState<GemKind>('diamond');
+  const [gemColor, setGemColor] = useState('#f7f3ee');
   const [gemClear, setGemClear] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [paint] = useState(() => new NailPaint());
@@ -76,15 +77,17 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
 
   // In the gem tools a new colour or clearness also changes the selected gem.
   const restyleGem = (look: { color: string; clear: boolean }) => {
-    if (mode === 'gem' && selectedGem !== undefined && target !== null) send({ type: 'styleGem', target, id: selectedGem.id, look });
+    if (selectedGem !== undefined && target !== null) send({ type: 'styleGem', target, id: selectedGem.id, look });
   };
-  const onToolColor = (color: string) => {
-    setToolColor(color);
-    restyleGem({ color, clear: selectedGem?.clear ?? gemClear });
+  const gemColorShown = selectedGem?.color ?? gemColor;
+  const gemClearShown = selectedGem?.clear ?? gemClear;
+  const onGemColor = (color: string) => {
+    setGemColor(color);
+    restyleGem({ color, clear: gemClearShown });
   };
   const onGemClear = (clear: boolean) => {
     setGemClear(clear);
-    restyleGem({ color: selectedGem?.color ?? toolColor, clear });
+    restyleGem({ color: gemColorShown, clear });
   };
 
   // The width follows the pointer through a CSS variable, so dragging does not re-render the editor.
@@ -227,7 +230,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                 design={design}
                 paint={paint}
                 tool={mode === 'draw' ? (eraser ? 'eraser' : 'brush') : mode}
-                color={toolColor}
+                color={mode === 'gem' ? gemColor : toolColor}
                 brushSize={brushSize}
                 stickerKind={stickerKind}
                 gemKind={gemKind}
@@ -238,7 +241,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                 newItemId={() => `${mode === 'gem' ? 'g' : 's'}${(itemCount.current += 1)}`}
               />
               <fieldset disabled={target === null} className="bare">
-                <ColorTool color={toolColor} onChange={onToolColor} />
+                {mode !== 'gem' && <ColorTool color={toolColor} onChange={setToolColor} />}
                 {mode === 'draw' ? (
                   <DrawTools
                     eraser={eraser}
@@ -264,12 +267,10 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                 ) : (
                   <GemTools
                     kind={gemKind}
-                    onKindChange={(kind) => {
-                      // A new kind starts a new gem, so colour and clearness no longer change the last one.
-                      setGemKind(kind);
-                      setSelectedItem(null);
-                    }}
-                    clear={selectedGem?.clear ?? gemClear}
+                    onKindChange={setGemKind}
+                    color={gemColorShown}
+                    onColorChange={onGemColor}
+                    clear={gemClearShown}
                     onClearChange={onGemClear}
                     selected={selectedGem}
                     canClear={padNail !== undefined && padNail.gems.length > 0}
