@@ -11,8 +11,9 @@ npm test             # Vitest: core and other pure logic
 npm run test:watch
 npm run lint         # ESLint, includes the core import boundary
 npm run typecheck
-npm run build        # type-check and production build into dist/
-npm run preview      # serve dist/ locally
+npm run build        # type-check and production build into host/wwwroot/
+npm run preview      # serve host/wwwroot/ locally
+dotnet build host    # what F5 in Visual Studio does: npm install + npm run build, then the .NET host
 ```
 
 ## Architecture
@@ -35,5 +36,5 @@ npm run preview      # serve dist/ locally
 - Assets (models, HDRIs, stickers) need a licence that allows this use; record source and licence in `public/assets/CREDITS.md`.
 - No unused constants or exports, no hidden side effects (functions that mutate their arguments).
 - Do not invent requirements; they are in the plan. If unclear, ask.
-- The owner develops on Windows in Visual Studio (`NailSalon.slnx`, a JavaScript project `NailSalon.esproj`; F5 runs `npm run dev` on port 5173). Keep scripts cross-platform (no bash-only npm scripts); line endings LF via `.gitattributes`.
+- The owner develops on Windows in Visual Studio and presses F5 on `NailSalon.slnx`: `host/NailSalon.Host.csproj` (ASP.NET Core, serves `host/wwwroot`) runs `npm run build` before it compiles, like TriominosTheGame. Do not add a JavaScript project (`.esproj`) or `launch.json`; both failed in Visual Studio. The host stays minimal: no application logic in C#. Keep scripts cross-platform (no bash-only npm scripts); line endings LF via `.gitattributes`.
 - Work on a branch (`feat/`, `fix/`), not on `main`. Do not merge; the user does that.

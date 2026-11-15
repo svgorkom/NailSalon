@@ -8,25 +8,27 @@ Design fingernails on a realistic 3D hand, in the browser. React + React Three F
 - `src/scene`: the 3D scene (React Three Fiber).
 - `src/ui`: screens and tools.
 - `tests`: Vitest tests, mirroring `src`.
+- `host`: .NET project that builds and serves the app (F5 in Visual Studio); `host/wwwroot` is build output.
 - `docs/plans`: requirements and design; `docs/tracking`: known defects.
 
 ## Run on Windows with Visual Studio
 
-Requires Visual Studio 2022 or newer with the **Node.js development** workload (the same Node.js setup TriominosTheGame needs; no separate Node.js install).
+Same setup as TriominosTheGame: a .NET web project (`host/NailSalon.Host.csproj`) that builds the web app with Vite before it compiles and then serves it. Requires Visual Studio with the .NET 10 SDK and Node.js (the Node.js development workload, or Node on the PATH).
 
-1. Open `NailSalon.slnx`. Visual Studio runs `npm install` the first time (see the Output window, *npm*).
-2. Right-click the project *NailSalon* in Solution Explorer → **Set as Startup Project** (once).
-3. Press F5. `.vscode/launch.json` makes Visual Studio run `npm run dev` in a terminal; Vite then opens the browser on http://localhost:5173 (the first start takes a few seconds while Vite bundles). Stop with Shift+F5.
-4. Tests appear in Test Explorer (Vitest).
+1. Open `NailSalon.slnx`.
+2. Press F5. The build runs `npm install` (only when `package-lock.json` changed) and `npm run build`, then starts the site and opens http://localhost:5174.
+3. After a code change: stop, press F5 again (the build takes a few seconds). For instant updates while editing, run `npm run dev` in a terminal instead and open http://localhost:5173 (hot reload).
 
-### Without Visual Studio or admin rights
+`dotnet build host -p:SkipAppBuild=true` skips the npm steps and uses the existing `host/wwwroot`.
 
-Download the Node.js 22 LTS **Windows Binary (.zip)** from nodejs.org, extract it to a folder in your user profile (for example `%USERPROFILE%\tools\node`) and add that folder to your *user* `PATH` (Start → "Edit environment variables for your account"). No admin rights needed. Then, in the repository folder:
+### Without Visual Studio
 
 ```powershell
-npm ci
+npm install
 npm run dev
 ```
+
+Needs Node.js 22 or newer. Without admin rights: the Node.js **Windows Binary (.zip)** from nodejs.org, extracted in your user profile and added to your *user* `PATH`.
 
 ### On a phone
 

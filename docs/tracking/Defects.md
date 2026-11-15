@@ -4,9 +4,7 @@
 
 | ID | Item | Fix |
 |---|---|---|
-| D-003 | Visual Studio build failed with EBUSY: the SDK ran `npm install` on every restore and build while node_modules was in use. | `NailSalon.esproj` installs only when `package-lock.json` changed; one copy of `three` (override for `stats-gl`). |
-
-| D-004 | F5 in Visual Studio opened Chrome on an address where nothing listened, or "startup project cannot be launched". | `.vscode/launch.json` is what the Start button runs; it now starts `npm run dev` (node launch of npm). Set NailSalon as startup project. |
+| D-003 | F5 in Visual Studio failed (EBUSY from `npm install`, nothing listening on the port, "startup project cannot be launched", `integratedTerminal` unsupported) with the JavaScript project (`.esproj`) and `launch.json`. | Replaced by `host/NailSalon.Host.csproj`, the TriominosTheGame setup: .NET web project, npm runs from build targets only when needed, Kestrel serves the Vite build; one copy of `three` (override for `stats-gl`). |
 
 ## Open
 

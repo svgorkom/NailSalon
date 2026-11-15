@@ -3,7 +3,5 @@
     <File Path="CLAUDE.md" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="NailSalon.esproj">
-    <Build />
-  </Project>
+  <Project Path="host/NailSalon.Host.csproj" />
 </Solution>

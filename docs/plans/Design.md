@@ -40,9 +40,9 @@ ui  →  scene  →  core
 
 ## Running and hosting
 
-- Phases 1-6: the app runs locally on a Windows PC with `npm run dev`. CI only lints, tests and builds.
+- Phases 1-6: the app runs locally on a Windows PC: F5 in Visual Studio runs `host/NailSalon.Host` (ASP.NET Core serving the Vite build in `host/wwwroot`), as in TriominosTheGame; `npm run dev` gives hot reload. CI lints, tests and builds, including the host.
 - Sign-in uses `signInWithPopup`; `localhost` is a Firebase authorized domain by default. The redirect flow is unreliable on domains other than Firebase Hosting, so popup stays the choice after deployment.
-- Phase 7: Cloudflare Workers with static assets (Wrangler config, SPA fallback to `index.html`), deployed by GitHub Actions on push to `main` (secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). The Cloudflare domain is added to Firebase *authorized domains*.
+- Phase 7: Cloudflare Workers with static assets (Wrangler config serving `host/wwwroot`, SPA fallback to `index.html`), deployed by GitHub Actions on push to `main` (secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). The Cloudflare domain is added to Firebase *authorized domains*.
 
 ## Phases
 
