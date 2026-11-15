@@ -1,7 +1,10 @@
 import { ContactShadows, Environment, Lightformer, OrbitControls } from '@react-three/drei';
-import { Canvas, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, type ThreeEvent, useThree } from '@react-three/fiber';
+import { useEffect, useMemo } from 'react';
+import { CanvasTexture, DoubleSide, PlaneGeometry, SRGBColorSpace } from 'three';
 import { type Design, type Finger, FINGERS, type Finish } from '../core';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
+import type { NailPaint } from './nailPaint';
 
 interface HandSceneProps {
   readonly design: Design;
@@ -9,6 +12,8 @@ interface HandSceneProps {
   readonly theme: Theme;
   /** Base colour of the skin. */
   readonly skin: string;
+  /** Holds the texture of each nail: base colour, drawing and stickers. */
+  readonly paint: NailPaint;
   readonly onSelect: (finger: Finger) => void;
 }
 
@@ -23,6 +28,20 @@ const FINGER_LAYOUT: Readonly<Record<Finger, { x: number; length: number; tilt: 
 
 const FINGER_RADIUS = 0.24;
 
+/** Placeholder nail plate: it follows the curve of the finger. Its UV covers the nail texture: top is the free edge. */
+const NAIL_WIDTH = 0.4;
+
+function createNailPlate(): PlaneGeometry {
+  const plate = new PlaneGeometry(NAIL_WIDTH, 1, 12, 16);
+  const position = plate.getAttribute('position');
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index);
+    position.setZ(index, Math.sqrt(FINGER_RADIUS ** 2 - x ** 2) + 0.015);
+  }
+  plate.computeVertexNormals();
+  return plate;
+}
+
 const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: number; clearcoat: number }>> = {
   gloss: { roughness: 0.25, metalness: 0, clearcoat: 1 },
   matte: { roughness: 0.85, metalness: 0, clearcoat: 0 },
@@ -31,7 +50,7 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
   chrome: { roughness: 0.05, metalness: 1, clearcoat: 1 },
 };
 
-export function HandScene({ design, selected, theme, skin, onSelect }: HandSceneProps) {
+export function HandScene({ design, selected, theme, skin, paint, onSelect }: HandSceneProps) {
   return (
     <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: [0, 1.5, 6], fov: 40 }} data-testid="hand-scene">
       <ambientLight intensity={0.3} color={SCENE_LIGHT[theme].sky} />
@@ -52,6 +71,7 @@ export function HandScene({ design, selected, theme, skin, onSelect }: HandScene
             finger={finger}
             design={design}
             skin={skin}
+            paint={paint}
             isSelected={finger === selected}
             onSelect={onSelect}
           />
@@ -67,14 +87,37 @@ interface PlaceholderFingerProps {
   readonly finger: Finger;
   readonly design: Design;
   readonly skin: string;
+  readonly paint: NailPaint;
   readonly isSelected: boolean;
   readonly onSelect: (finger: Finger) => void;
 }
 
-function PlaceholderFinger({ finger, design, skin, isSelected, onSelect }: PlaceholderFingerProps) {
+function PlaceholderFinger({ finger, design, skin, paint, isSelected, onSelect }: PlaceholderFingerProps) {
   const { x, length, tilt } = FINGER_LAYOUT[finger];
   const nail = design.nails[finger];
   const material = FINISH_MATERIAL[nail.finish];
+  const invalidate = useThree((state) => state.invalidate);
+
+  const plate = useMemo(() => createNailPlate(), []);
+  useEffect(() => () => plate.dispose(), [plate]);
+
+  const texture = useMemo(() => {
+    const created = new CanvasTexture(paint.canvas(finger));
+    created.colorSpace = SRGBColorSpace;
+    created.anisotropy = 4;
+    return created;
+  }, [paint, finger]);
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  useEffect(
+    () =>
+      paint.subscribe((changed) => {
+        if (changed !== finger) return;
+        texture.needsUpdate = true;
+        invalidate();
+      }),
+    [paint, finger, texture, invalidate],
+  );
 
   const select = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation();
@@ -87,10 +130,11 @@ function PlaceholderFinger({ finger, design, skin, isSelected, onSelect }: Place
         <capsuleGeometry args={[FINGER_RADIUS, length, 8, 24]} />
         <meshStandardMaterial color={skin} roughness={0.6} />
       </mesh>
-      <mesh position={[0, length + 0.02, FINGER_RADIUS * 0.75]} scale={[1, 1.3 + nail.length, 0.35]} onClick={select}>
-        <sphereGeometry args={[FINGER_RADIUS * 0.85, 32, 16]} />
+      <mesh geometry={plate} position={[0, length - 0.1, 0]} scale={[1, 0.45 + 0.25 * nail.length, 1]} onClick={select}>
         <meshPhysicalMaterial
-          color={nail.color}
+          map={texture}
+          alphaTest={0.5}
+          side={DoubleSide}
           roughness={material.roughness}
           metalness={material.metalness}
           clearcoat={material.clearcoat}

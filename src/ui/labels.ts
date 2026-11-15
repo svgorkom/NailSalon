@@ -1,4 +1,4 @@
-import type { Finger, Finish } from '../core';
+import type { Finger, Finish, StickerKind } from '../core';
 
 /** Dutch user-facing names. */
 export const FINGER_LABELS: Readonly<Record<Finger, string>> = {
@@ -27,3 +27,12 @@ export const PALETTE: readonly { color: string; name: string }[] = [
   { color: '#111111', name: 'Zwart' },
   { color: '#f7f3ee', name: 'Wit' },
 ];
+
+export const STICKER_LABELS: Readonly<Record<StickerKind, string>> = {
+  heart: 'Hartje',
+  star: 'Ster',
+  flower: 'Bloem',
+  sparkle: 'Schittering',
+  moon: 'Maan',
+  butterfly: 'Vlinder',
+};
