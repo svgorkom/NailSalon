@@ -1,6 +1,7 @@
 import { lazy, Suspense, useReducer, useState } from 'react';
 import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, redo, undo } from '../core';
 import { FINGER_LABELS, FINISH_LABELS, PALETTE } from './labels';
+import { THEME_LABELS, THEMES, type Theme } from './theme';
 
 const HandScene = lazy(() => import('../scene/HandScene').then((module) => ({ default: module.HandScene })));
 
@@ -17,7 +18,12 @@ function reducer(history: History, action: Action): History {
   }
 }
 
-export function Editor() {
+interface EditorProps {
+  readonly theme: Theme;
+  readonly onThemeChange: (theme: Theme) => void;
+}
+
+export function Editor({ theme, onThemeChange }: EditorProps) {
   const [history, dispatch] = useReducer(reducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
   const [selected, setSelected] = useState<Finger | null>(null);
   const [allNails, setAllNails] = useState(false);
@@ -32,8 +38,9 @@ export function Editor() {
         <Suspense fallback={<p className="loading">Hand laden…</p>}>
           <HandScene design={design} selected={allNails ? null : selected} onSelect={setSelected} />
         </Suspense>
+        <div className="vignette" />
       </div>
-      <aside className="tools" aria-label="Gereedschap">
+      <aside className="tools panel" aria-label="Gereedschap">
         <div className="row">
           <button type="button" onClick={() => dispatch({ type: 'undo' })} disabled={!canUndo(history)}>
             ↶ Ongedaan
@@ -69,8 +76,18 @@ export function Editor() {
           <legend>Afwerking</legend>
           <div className="choices">
             {FINISHES.map((finish) => (
-              <button key={finish} type="button" onClick={() => target && send({ type: 'setFinish', target, finish })}>
+              <button key={finish} type="button" className="choice" onClick={() => target && send({ type: 'setFinish', target, finish })}>
                 {FINISH_LABELS[finish]}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Thema</legend>
+          <div className="choices">
+            {THEMES.map((name) => (
+              <button key={name} type="button" className="choice" aria-pressed={name === theme} onClick={() => onThemeChange(name)}>
+                {THEME_LABELS[name]}
               </button>
             ))}
           </div>

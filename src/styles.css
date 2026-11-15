@@ -1,19 +1,167 @@
-:root {
-  --pink: #d63c7a;
-  --pink-soft: #fbeff3;
-  --ink: #2b1f2a;
-  --line: #ead3dc;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: var(--ink);
-  background: #fff;
+/* Fonts: SIL Open Font License, see public/fonts/LICENSE-*.txt */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/cormorant-garamond-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/playfair-display-latin-700-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/inter-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/inter-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/inter-latin-600-normal.woff2') format('woff2');
+}
+
+/*
+ * Themes, the same as in TriominosTheGame (its wwwroot/css/app.css). App.tsx puts data-theme on the
+ * document element; index.html does it before the first paint. Without it the classic theme shows.
+ * --accent-rgb is --accent as numbers, for the translucent borders.
+ */
+:root,
+[data-theme='classic'] {
+  --felt: #0f3d2e;
+  --felt-light: #14503c;
+  --page: #1a110b;
+  --text: #efe3c8;
+  --accent: #c9a24b;
+  --accent-rgb: 201, 162, 75;
+  --accent-light: #f0d891;
+  --accent-dark: #a8853a;
+  --on-accent: #23160c;
+  --panel-top: rgba(34, 22, 14, 0.78);
+  --panel-bottom: rgba(18, 11, 7, 0.82);
+  --panel-shine: rgba(255, 236, 190, 0.12);
+  --panel-shadow: rgba(0, 0, 0, 0.45);
+  --raised-top: rgba(70, 46, 28, 0.9);
+  --raised-bottom: rgba(40, 26, 16, 0.9);
+  --field: rgba(22, 14, 8, 0.9);
+  --vignette-rgb: 8, 5, 3;
+  --title-font: 'Cormorant Garamond', Georgia, serif;
+  --title-spacing: 0.12em;
+  --title-weight: 700;
+}
+
+[data-theme='modern'] {
+  --felt: #282b31;
+  --felt-light: #3a3f48;
+  --page: #0c0d0f;
+  --text: #e6e9ee;
+  --accent: #c3cad3;
+  --accent-rgb: 195, 202, 211;
+  --accent-light: #f1f3f6;
+  --accent-dark: #8b939e;
+  --on-accent: #14161a;
+  --panel-top: rgba(30, 32, 37, 0.78);
+  --panel-bottom: rgba(14, 15, 18, 0.84);
+  --panel-shine: rgba(255, 255, 255, 0.1);
+  --raised-top: rgba(54, 58, 66, 0.9);
+  --raised-bottom: rgba(30, 32, 38, 0.9);
+  --field: rgba(20, 22, 26, 0.9);
+  --vignette-rgb: 4, 5, 6;
+  --title-font: Inter, system-ui, sans-serif;
+  --title-spacing: 0.22em;
+  --title-weight: 600;
+}
+
+[data-theme='playful'] {
+  --felt: #18569c;
+  --felt-light: #2f7fd0;
+  --page: #0b1c33;
+  --text: #f5efe2;
+  --accent: #ffb84d;
+  --accent-rgb: 255, 184, 77;
+  --accent-light: #ffdc94;
+  --accent-dark: #e58a1c;
+  --on-accent: #2a1500;
+  --panel-top: rgba(18, 42, 78, 0.8);
+  --panel-bottom: rgba(9, 24, 48, 0.85);
+  --panel-shine: rgba(200, 228, 255, 0.14);
+  --raised-top: rgba(32, 66, 114, 0.9);
+  --raised-bottom: rgba(18, 42, 80, 0.9);
+  --field: rgba(10, 26, 50, 0.9);
+  --vignette-rgb: 4, 10, 22;
+  --title-font: 'Playfair Display', Georgia, serif;
+  --title-spacing: 0.06em;
+}
+
+[data-theme='midnight'] {
+  --felt: #0c1a3c;
+  --felt-light: #182f66;
+  --page: #070b16;
+  --text: #e8e6ee;
+  --accent: #d49a7c;
+  --accent-rgb: 212, 154, 124;
+  --accent-light: #f2c9b2;
+  --accent-dark: #a86f54;
+  --on-accent: #1d0f0a;
+  --panel-top: rgba(17, 23, 46, 0.8);
+  --panel-bottom: rgba(8, 11, 24, 0.85);
+  --panel-shine: rgba(214, 224, 255, 0.12);
+  --raised-top: rgba(32, 42, 78, 0.9);
+  --raised-bottom: rgba(16, 22, 46, 0.9);
+  --field: rgba(10, 14, 30, 0.9);
+  --vignette-rgb: 3, 4, 10;
+}
+
+/* The light theme: white panels with dark text, so the accent is a deeper gold that reads on white. */
+[data-theme='porcelain'] {
+  --felt: #48627a;
+  --felt-light: #6f8aa2;
+  --page: #dfe5ea;
+  --text: #26303a;
+  --accent: #94701f;
+  --accent-rgb: 148, 112, 31;
+  --accent-light: #c9a24b;
+  --accent-dark: #7a5a16;
+  --on-accent: #fffaf0;
+  --panel-top: rgba(255, 255, 255, 0.84);
+  --panel-bottom: rgba(240, 244, 248, 0.88);
+  --panel-shine: rgba(255, 255, 255, 0.7);
+  --panel-shadow: rgba(40, 55, 70, 0.25);
+  --raised-top: rgba(255, 255, 255, 0.95);
+  --raised-bottom: rgba(228, 234, 240, 0.95);
+  --field: rgba(255, 255, 255, 0.92);
+  --vignette-rgb: 60, 76, 92;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  height: 100%;
+  background: var(--page);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
 }
 
 #root {
@@ -22,15 +170,33 @@ body {
   height: 100dvh;
 }
 
-.app-header {
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--line);
+.panel {
+  background: linear-gradient(180deg, var(--panel-top), var(--panel-bottom));
+  border: 1px solid rgba(var(--accent-rgb), 0.65);
+  box-shadow:
+    0 10px 30px var(--panel-shadow),
+    inset 0 1px 0 var(--panel-shine);
+  backdrop-filter: blur(8px);
 }
 
-.app-header h1 {
+.app-header {
+  display: flex;
+  justify-content: center;
+  padding: 0.4rem 1rem;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+.title {
   margin: 0;
-  font-size: 1.25rem;
-  color: var(--pink);
+  font-family: var(--title-font);
+  font-size: 2.1rem;
+  font-weight: var(--title-weight);
+  letter-spacing: var(--title-spacing);
+  background: linear-gradient(180deg, var(--accent-light), var(--accent) 55%, var(--accent-dark));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 main {
@@ -44,11 +210,19 @@ main {
   height: 100%;
 }
 
+/* The canvas is transparent: the hand lies on the same glowing cloth as the loading screen of the game. */
 .viewer {
   position: relative;
   min-height: 0;
-  background: var(--pink-soft);
+  background: radial-gradient(ellipse at 50% 45%, var(--felt-light) 0%, var(--felt) 38%, var(--page) 100%);
   touch-action: none;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(var(--vignette-rgb), 0.55) 80%, rgba(var(--vignette-rgb), 0.85) 100%);
 }
 
 .loading {
@@ -57,6 +231,9 @@ main {
   display: grid;
   place-items: center;
   margin: 0;
+  font-family: var(--title-font);
+  font-size: 1.5rem;
+  color: var(--accent);
 }
 
 .tools {
@@ -65,7 +242,7 @@ main {
   gap: 0.75rem;
   padding: 1rem;
   overflow-y: auto;
-  border-left: 1px solid var(--line);
+  border-width: 0 0 0 1px;
 }
 
 .row {
@@ -77,10 +254,12 @@ main {
 .status {
   margin: 0;
   font-weight: 600;
+  color: var(--accent);
 }
 
 fieldset {
-  border: 1px solid var(--line);
+  margin: 0;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
   border-radius: 0.75rem;
   padding: 0.5rem 0.75rem 0.75rem;
 }
@@ -89,22 +268,53 @@ fieldset:disabled {
   opacity: 0.5;
 }
 
+legend {
+  padding: 0 0.4rem;
+  font-family: var(--title-font);
+  font-size: 1.15rem;
+  font-weight: var(--title-weight);
+  letter-spacing: 0.04em;
+  color: var(--accent-light);
+}
+
 button {
-  font: inherit;
-  padding: 0.45rem 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
+  font: 500 0.95rem Inter, system-ui, sans-serif;
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: 0.55rem;
+  background: linear-gradient(180deg, var(--raised-top), var(--raised-bottom));
   cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--pink);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.35),
+    0 4px 14px rgba(var(--accent-rgb), 0.18);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled {
   cursor: default;
-  opacity: 0.5;
+  opacity: 0.45;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+input[type='checkbox'] {
+  accent-color: var(--accent);
 }
 
 .swatches,
@@ -118,8 +328,24 @@ button:disabled {
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px var(--line);
+  border: 2px solid rgba(var(--accent-rgb), 0.6);
+  border-radius: 50%;
+}
+
+.choice {
+  background: var(--field);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.choice:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.choice[aria-pressed='true'] {
+  color: var(--on-accent);
+  font-weight: 600;
+  border-color: var(--accent-light);
+  background: linear-gradient(180deg, var(--accent-light), var(--accent) 60%, var(--accent-dark));
 }
 
 @media (max-width: 720px), (orientation: portrait) {
@@ -130,7 +356,10 @@ button:disabled {
 
   .tools {
     max-height: 45dvh;
-    border-left: none;
-    border-top: 1px solid var(--line);
+    border-width: 1px 0 0;
+  }
+
+  .title {
+    font-size: 1.7rem;
   }
 }

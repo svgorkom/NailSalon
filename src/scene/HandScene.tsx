@@ -30,8 +30,7 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
 
 export function HandScene({ design, selected, onSelect }: HandSceneProps) {
   return (
-    <Canvas frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 1.5, 6], fov: 40 }} data-testid="hand-scene">
-      <color attach="background" args={['#fbeff3']} />
+    <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: [0, 1.5, 6], fov: 40 }} data-testid="hand-scene">
       <ambientLight intensity={0.3} />
       <directionalLight position={[3, 5, 4]} intensity={1.6} />
       <Environment resolution={256}>
