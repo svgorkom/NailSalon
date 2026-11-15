@@ -373,6 +373,11 @@ input[type='checkbox'] {
   }
 }
 
+.length {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
 /* Drawing pad: the same canvas as the nail in 3D, shown flat. */
 .pad {
   /* Stays in view while the tools below it scroll. */

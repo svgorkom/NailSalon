@@ -6,8 +6,8 @@ export const TEXTURE_WIDTH = 512;
 export const TEXTURE_HEIGHT = 640;
 
 /**
- * Outline of the nail on the texture: straight sides, a round free edge at the top and a slightly rounded
- * cuticle edge at the bottom. Placeholder until the nail shapes of phase 2 give an outline per shape.
+ * Guide outline drawn on the pad: straight sides, a round free edge at the top and a slightly rounded cuticle
+ * edge at the bottom. The texture itself is not clipped; the 3D nail takes its outline from the nail shape.
  */
 export function traceNailOutline(ctx: CanvasRenderingContext2D): void {
   const half = TEXTURE_WIDTH / 2;
@@ -70,8 +70,6 @@ export function paintSticker(ctx: CanvasRenderingContext2D, sticker: Sticker): v
 export function paintNail(ctx: CanvasRenderingContext2D, nail: Nail, drawing: CanvasImageSource): void {
   ctx.clearRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   ctx.save();
-  traceNailOutline(ctx);
-  ctx.clip();
   ctx.fillStyle = nail.color;
   ctx.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
   ctx.drawImage(drawing, 0, 0);

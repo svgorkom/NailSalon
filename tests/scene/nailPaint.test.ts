@@ -59,12 +59,12 @@ describe('paintStroke', () => {
 });
 
 describe('paintNail', () => {
-  it('paints the base colour, then the drawing, then the stickers, inside a clip', () => {
+  it('paints the base colour, then the drawing, then the stickers, over the whole texture', () => {
     const { ctx, log } = recorder();
     const nail = { ...createDesign('T').nails.thumb, color: '#abcdef', stickers: [sticker] };
     paintNail(ctx, nail, {} as CanvasImageSource);
 
-    const order = ['clip(', 'fillStyle=#abcdef', 'fillRect(', 'drawImage(', 'rotate(', 'fill('].map((part) => log.findIndex((entry) => entry.startsWith(part)));
+    const order = ['fillStyle=#abcdef', 'fillRect(', 'drawImage(', 'rotate(', 'fill('].map((part) => log.findIndex((entry) => entry.startsWith(part)));
     expect(order.every((index) => index >= 0)).toBe(true);
     expect(order).toEqual([...order].sort((a, b) => a - b));
   });

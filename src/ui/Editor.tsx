@@ -1,8 +1,8 @@
 import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, redo, type StickerKind, undo } from '../core';
+import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
 import { NailPaint } from '../scene/nailPaint';
 import { ColorTool, DrawTools, StickerTools } from './DecorationTools';
-import { FINGER_LABELS, FINISH_LABELS, PALETTE } from './labels';
+import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
 import { THEME_LABELS, THEMES, type Theme } from './theme';
@@ -50,6 +50,8 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const [toolsWidth, setToolsWidth] = useState(loadToolsWidth);
   const design = history.present;
   const target = allNails ? 'all' : selected;
+  // For all nails at once the slider shows the index finger; the command then sets every nail.
+  const lengthShown = design.nails[target === null || target === 'all' ? 'index' : target].length;
   // The pad shows the chosen nail; with all nails it shows the middle finger unless another is chosen.
   const padFinger = selected ?? (allNails ? 'middle' : null);
   const padNail = padFinger === null ? undefined : design.nails[padFinger];
@@ -132,6 +134,29 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
         </div>
         {mode === 'look' ? (
           <>
+          <fieldset disabled={target === null}>
+            <legend>Vorm</legend>
+            <div className="choices">
+              {NAIL_SHAPES.map((shape) => (
+                <button key={shape} type="button" className="choice" onClick={() => target && send({ type: 'setShape', target, shape })}>
+                  {SHAPE_LABELS[shape]}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset disabled={target === null}>
+            <legend>Lengte</legend>
+            <input
+              type="range"
+              className="length"
+              min={0}
+              max={1}
+              step={0.1}
+              value={lengthShown}
+              aria-label="Lengte van de nagel"
+              onChange={(event) => target && send({ type: 'setLength', target, length: Number(event.target.value) })}
+            />
+          </fieldset>
           <fieldset disabled={target === null}>
             <legend>Kleur</legend>
             <div className="swatches">

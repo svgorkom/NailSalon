@@ -58,7 +58,20 @@ Each phase on its own branch; the owner merges.
 
 ## Open items
 
-- Stickers and free drawing were built before the hand model of phase 2. The nail outline and plate are placeholders; the UV convention (top of the texture is the free edge) stays.
+- The hand model is in place (see *Hand model*). A scan-quality skin (photo-based textures, veins, palm lines) and a left hand are not there yet.
+- Stickers and free drawing were built before the hand model. The flat drawing pad still uses the placeholder outline from `traceNailOutline`; the 3D nail takes the shape from core. The UV convention (top of the texture is the free edge) stays.
 - Strokes make the design document grow. Check against the Firestore 1 MB document limit in phase 5; if needed, simplify points or store the drawing separately.
-- A realistic hand model (GLB, licence CC0 or CC-BY, outstretched hand) is to be supplied by the owner. Until then a placeholder is used.
 - A Firebase project is to be created by the owner before phase 5.
+
+## Hand model
+
+`public/assets/hand/hand.glb` (about 2.5 MB; metres, wrist at the origin, fingers along +y, back of the hand towards +z, right hand; mirror with `scale.x = -1` for a left hand).
+
+- `Hand`: one skinned mesh (about 28,000 vertices) with a single material: colour, normal and roughness textures (2048², JPEG). The scene tints the material per skin tone (`skinTint` in `src/ui/skin.ts`, relative to the texture's average colour).
+- `HandRig`: 22 bones (`lowerarm01/02`, `wrist`, `metacarpal1-4`, `finger1-3 × 3`, all `.R`) in a glTF skin. The hand is in a fixed pose; the thumb is twisted 60° about its own axis so that its nail faces up and out instead of sideways.
+- `NailBed_Thumb|Index|Middle|Ring|Pinky`: one empty per finger, a child of the last finger bone. Local axes: x across the nail, y from cuticle to tip, z up from the nail. Custom properties (`extras`, read as `userData`): `nailWidth` and `bedLength` in metres, and `gx`, `gy`, `gxx`, `gxy`, `gyy`, the height of the nail surface `gx·x + gy·y + gxx·x² + gxy·x·y + gyy·y²` (a quadratic fitted to the nail area of the mesh).
+- Nails are not in the file. `src/scene/nailBed.ts` reads the anchors; `src/scene/nailGeometry.ts` builds a nail plate that follows the nail surface and continues as a free edge. `core` decides the outline (`tipWidth`) and the length (`freeEdgeRatio`). All seven shapes and every length work without extra models, and the nails move with the bones if the hand is ever posed.
+- Picking: a tap on a nail selects it; a tap on the skin selects the finger whose nail is within 3 cm (`nearestFinger`), because a nail is small on a phone.
+
+When the model is regenerated, keep these names and axes. In Blender's glTF export the local axes of an empty are the Blender axes `(x, y, z) → (x, z, −y)`, so the anchor frame there is `(across, −up, along)`.
+
