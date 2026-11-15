@@ -2,7 +2,9 @@
 
 ## Fixed
 
-None yet.
+| ID | Item | Fix |
+|---|---|---|
+| D-003 | Visual Studio build failed with EBUSY: the SDK ran `npm install` on every restore and build while node_modules was in use. | `NailSalon.esproj` installs only when `package-lock.json` changed; one copy of `three` (override for `stats-gl`). |
 
 ## Open
 
