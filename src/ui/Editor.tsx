@@ -1,4 +1,4 @@
-import { lazy, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
+import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINISHES, type History, redo, type StickerKind, undo } from '../core';
 import { NailPaint } from '../scene/nailPaint';
 import { ColorTool, DrawTools, StickerTools } from './DecorationTools';
@@ -6,6 +6,7 @@ import { FINGER_LABELS, FINISH_LABELS, PALETTE } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
 import { THEME_LABELS, THEMES, type Theme } from './theme';
+import { clampToolsWidth, loadToolsWidth, saveToolsWidth } from './toolsWidth';
 
 const HandScene = lazy(() => import('../scene/HandScene').then((module) => ({ default: module.HandScene })));
 
@@ -45,6 +46,8 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
   const [paint] = useState(() => new NailPaint());
   const stickerCount = useRef(0);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [toolsWidth, setToolsWidth] = useState(loadToolsWidth);
   const design = history.present;
   const target = allNails ? 'all' : selected;
   // The pad shows the chosen nail; with all nails it shows the middle finger unless another is chosen.
@@ -57,14 +60,50 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
 
   const send = (command: Command) => dispatch({ type: 'command', command });
 
+  // The width follows the pointer through a CSS variable, so dragging does not re-render the editor.
+  const widthFor = (clientX: number): number => {
+    const rect = editorRef.current?.getBoundingClientRect();
+    return rect === undefined ? toolsWidth : clampToolsWidth(rect.right - clientX, rect.width);
+  };
+  const resizeTo = (width: number) => editorRef.current?.style.setProperty('--tools-width', `${width}px`);
+  const onResizeMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) resizeTo(widthFor(event.clientX));
+  };
+  const onResizeEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const width = widthFor(event.clientX);
+    resizeTo(width);
+    setToolsWidth(width);
+    saveToolsWidth(width);
+  };
+  const onResizeKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === 'ArrowLeft' ? 24 : event.key === 'ArrowRight' ? -24 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const width = clampToolsWidth(toolsWidth + step, editorRef.current?.getBoundingClientRect().width ?? 0);
+    setToolsWidth(width);
+    saveToolsWidth(width);
+  };
+
   return (
-    <div className="editor">
+    <div className="editor" ref={editorRef} style={{ ['--tools-width' as string]: `${toolsWidth}px` }}>
       <div className="viewer">
         <Suspense fallback={<p className="loading">Hand laden…</p>}>
           <HandScene design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
         </Suspense>
         <div className="vignette" />
       </div>
+      <div
+        className="resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Breedte van het gereedschap"
+        aria-valuenow={toolsWidth}
+        tabIndex={0}
+        onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+        onPointerMove={onResizeMove}
+        onPointerUp={onResizeEnd}
+        onKeyDown={onResizeKey}
+      />
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="row">
           <button type="button" onClick={() => dispatch({ type: 'undo' })} disabled={!canUndo(history)}>
