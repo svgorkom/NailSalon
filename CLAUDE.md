@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-NailSalon is a web app in which the owner's daughter (12) designs fingernails on a realistic 3D hand: React 19 + React Three Fiber (Three.js), TypeScript, Vite; Firebase for Google sign-in and storage; hosted on Cloudflare Workers. Requirements: [docs/plans/Requirements.md](docs/plans/Requirements.md). Design and phases: [docs/plans/Design.md](docs/plans/Design.md). Known problems: [docs/tracking/Defects.md](docs/tracking/Defects.md).
+NailSalon is a web app in which the owner's daughter (12) designs fingernails on a realistic 3D hand: React 19 + React Three Fiber (Three.js), TypeScript, Vite; Firebase for Google sign-in and storage. Runs locally on a Windows PC for now; Cloudflare Workers hosting is phase 7. Requirements: [docs/plans/Requirements.md](docs/plans/Requirements.md). Design and phases: [docs/plans/Design.md](docs/plans/Design.md). Known problems: [docs/tracking/Defects.md](docs/tracking/Defects.md).
 
 ## Commands
 
@@ -13,7 +13,6 @@ npm run lint         # ESLint, includes the core import boundary
 npm run typecheck
 npm run build        # type-check and production build into dist/
 npm run preview      # serve dist/ locally
-npm run deploy       # wrangler deploy (CI does this on main)
 ```
 
 ## Architecture
@@ -36,4 +35,5 @@ npm run deploy       # wrangler deploy (CI does this on main)
 - Assets (models, HDRIs, stickers) need a licence that allows this use; record source and licence in `public/assets/CREDITS.md`.
 - No unused constants or exports, no hidden side effects (functions that mutate their arguments).
 - Do not invent requirements; they are in the plan. If unclear, ask.
+- The owner develops on Windows: keep scripts cross-platform (no bash-only npm scripts), line endings LF via `.gitattributes`.
 - Work on a branch (`feat/`, `fix/`), not on `main`. Do not merge; the user does that.

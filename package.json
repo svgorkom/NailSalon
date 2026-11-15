@@ -13,8 +13,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "deploy": "wrangler deploy"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",
@@ -35,7 +34,6 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
     "vite": "8.3.8",
-    "vitest": "5.1.0",
-    "wrangler": "4.162.0"
+    "vitest": "5.1.0"
   }
 }

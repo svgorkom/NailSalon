@@ -46,8 +46,9 @@ Per selected nail, or for all nails at once:
 
 ## Hosting
 
-- Static site on Cloudflare Workers (static assets), deployed from `main`.
-- Sign-in and storage with Firebase (Authentication, Firestore, Storage).
+- Until the last phase the app runs locally on the owner's Windows PC (`npm run dev`).
+- Last phase: static site on Cloudflare Workers (static assets), deployed from `main`.
+- Sign-in and storage with Firebase (Authentication, Firestore, Storage); `localhost` works for sign-in during local use.
 
 ## Out of scope
 

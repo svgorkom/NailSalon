@@ -12,7 +12,7 @@ How NailSalon meets [Requirements.md](Requirements.md), and the phases to build 
 | Build | Vite | Fast dev server and build. |
 | Tests | Vitest (logic, components with jsdom), Playwright (browser smoke) | |
 | Auth and data | Firebase Authentication (Google), Firestore, Storage | Google sign-in without our own server; free at this scale. |
-| Hosting | Cloudflare Workers static assets | Cloudflare's recommended path for new sites; deployed with Wrangler. |
+| Hosting | Local (`npm run dev`) until phase 7, then Cloudflare Workers static assets | Cloudflare's recommended path for new sites; deployed with Wrangler. |
 
 Blazor (as in Triominos) was rejected: free drawing updates the nail texture on every pointer move, which would mean C#↔JS interop per event.
 
@@ -38,21 +38,23 @@ ui  →  scene  →  core
 - Draco/meshopt-compressed GLB; textures in KTX2 where it helps.
 - Measure in the Chrome profiler after visual changes: 60 fps, frame under 10 ms.
 
-## Hosting and sign-in
+## Running and hosting
 
-- Cloudflare Workers with static assets, SPA fallback to `index.html`, deployed by GitHub Actions on push to `main` (secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
-- The Cloudflare domain is added to Firebase *authorized domains*. Sign-in uses `signInWithPopup`; the redirect flow is unreliable on domains other than Firebase Hosting.
+- Phases 1-6: the app runs locally on a Windows PC with `npm run dev`. CI only lints, tests and builds.
+- Sign-in uses `signInWithPopup`; `localhost` is a Firebase authorized domain by default. The redirect flow is unreliable on domains other than Firebase Hosting, so popup stays the choice after deployment.
+- Phase 7: Cloudflare Workers with static assets (Wrangler config, SPA fallback to `index.html`), deployed by GitHub Actions on push to `main` (secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). The Cloudflare domain is added to Firebase *authorized domains*.
 
 ## Phases
 
 Each phase on its own branch; the owner merges.
 
-1. **Setup**: repository, CLAUDE.md, CI and deploy, requirements and this design, core model skeleton, a placeholder 3D scene.
+1. **Setup**: repository, CLAUDE.md, CI, requirements and this design, core model skeleton, a placeholder 3D scene.
 2. **Hand and nails**: realistic hand model, generated nails, shapes and lengths, selecting a nail, camera controls.
 3. **Looks**: colours, finishes, patterns, stickers, undo/redo.
 4. **Free drawing**: drawing pad, brush, eraser, live texture.
 5. **Sign-in and cloud**: Firebase, Google sign-in, saving, Mijn ontwerpen.
 6. **Export and share**: PNG export, Web Share API.
+7. **Deploy**: Cloudflare Workers, deploy job in CI, Cloudflare domain in Firebase.
 
 ## Open items
 
