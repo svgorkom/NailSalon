@@ -1,6 +1,6 @@
 # NailSalon
 
-Design fingernails on a realistic 3D hand, in the browser. React + React Three Fiber, TypeScript, Vite; Firebase for sign-in and storage. Work in progress; runs locally for now; Cloudflare hosting is set up (see Deploy).
+Design fingernails on a realistic 3D hand, in the browser. React + React Three Fiber, TypeScript, Vite; Firebase for sign-in and storage. Work in progress; runs locally for now; Cloudflare Pages hosting, see Deploy.
 
 ## Structure
 
@@ -36,7 +36,7 @@ Needs Node.js 22 or newer. Without admin rights: the Node.js **Windows Binary (.
 
 ## Deploy
 
-Every merge to `main` runs the checks and then deploys to Cloudflare Workers (static assets, `wrangler.jsonc`) at https://nagels.svgorkom.nl. The site is behind Cloudflare Access: only the two allowed Google accounts get in. Needs the GitHub environment `production` with the secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Manual deploy from a terminal: `npm run build`, then `npx wrangler deploy`.
+Hosted on Cloudflare Pages, connected to this repository: every push to `main` is built and published by Cloudflare (build command `npm run build`, output directory `host/wwwroot`, environment variable `NODE_VERSION=22`). The site is behind Cloudflare Access: only the two allowed Google accounts get in. There is no deploy step in CI.
 
 ## Checks
 

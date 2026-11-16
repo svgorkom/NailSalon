@@ -12,7 +12,7 @@ How NailSalon meets [Requirements.md](Requirements.md), and the phases to build 
 | Build | Vite | Fast dev server and build. |
 | Tests | Vitest (logic, components with jsdom), Playwright (browser smoke) | |
 | Auth and data | Firebase Authentication (Google), Firestore, Storage | Google sign-in without our own server; free at this scale. |
-| Hosting | Local (`npm run dev`) until phase 7, then Cloudflare Workers static assets | Cloudflare's recommended path for new sites; deployed with Wrangler. |
+| Hosting | Local (`npm run dev`) until phase 7, then Cloudflare Pages (Git integration) | Builds and publishes on every push to `main`; no deploy tokens or CI job. |
 
 Blazor (as in Triominos) was rejected: free drawing updates the nail texture on every pointer move, which would mean C#↔JS interop per event.
 
@@ -43,8 +43,8 @@ ui  →  scene  →  core
 
 - Phases 1-6: the app runs locally on a Windows PC: F5 in Visual Studio runs `host/NailSalon.Host` (ASP.NET Core serving the Vite build in `host/wwwroot`), as in TriominosTheGame; `npm run dev` gives hot reload. CI lints, tests and builds, including the host.
 - Sign-in uses `signInWithPopup`; `localhost` is a Firebase authorized domain by default. The redirect flow is unreliable on domains other than Firebase Hosting, so popup stays the choice after deployment.
-- Phase 7: Cloudflare Workers with static assets (`wrangler.jsonc` serving `host/wwwroot`, SPA fallback to `index.html`) on `nagels.svgorkom.nl`, deployed by the `deploy` job in `.github/workflows/ci.yml` on every push to `main` after the checks pass (secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` in the GitHub environment `production`). The Cloudflare domain is added to Firebase *authorized domains*.
-- Access control: the whole site sits behind Cloudflare Access (Google login, free plan), with one Allow policy for the owner's and the daughter's Google accounts. The app needs no sign-in code for this. `workers_dev` and preview URLs stay off, because they would bypass Access.
+- Phase 7: Cloudflare Pages connected to the GitHub repository. Production branch `main`; build command `npm run build`; output directory `host/wwwroot`; environment variable `NODE_VERSION=22`. The `*.pages.dev` address is added to Firebase *authorized domains*.
+- Access control: the whole site (the `*.pages.dev` address and the preview deployments) sits behind Cloudflare Access (Google login, free plan), with one Allow policy for the owner's and the daughter's Google accounts, set via the Pages project's *Access policy*. The app needs no sign-in code for this. A custom domain is not used for now.
 
 ## Phases
 
@@ -56,7 +56,7 @@ Each phase on its own branch; the owner merges.
 4. **Free drawing**: drawing pad, brush, eraser, live texture.
 5. **Sign-in and cloud**: Firebase, Google sign-in, saving, Mijn ontwerpen.
 6. **Export and share**: PNG export, Web Share API.
-7. **Deploy**: Cloudflare Workers, deploy job in CI, Cloudflare domain in Firebase.
+7. **Deploy**: Cloudflare Pages with Access, Pages address in Firebase.
 
 ## Open items
 
