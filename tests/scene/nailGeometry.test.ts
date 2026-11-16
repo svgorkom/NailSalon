@@ -116,3 +116,20 @@ describe('surfaceFrame', () => {
     expect([...position, ...normal].every(Number.isFinite)).toBe(true);
   });
 });
+
+describe('free edge of a steep toe tip', () => {
+  // The third toe of the foot model: its surface falls at about -1.1 where the nail bed ends.
+  const TOE: NailBed = { width: 0.0074, length: 0.0078, curve: { gx: 0.02, gy: 0.98, gxx: -70.71, gxy: -6.36, gyy: -133.14 } };
+
+  it('follows the fall of the toe tip instead of sticking out level', () => {
+    const { positions } = buildNailMesh('squoval', 1, TOE);
+    const heights = (limit: (y: number) => boolean) => {
+      const found: number[] = [];
+      for (let i = 0; i < positions.length; i += 3) if (limit(positions[i + 1] ?? 0)) found.push(positions[i + 2] ?? 0);
+      return found;
+    };
+    const tip = Math.min(...heights((y) => y > TOE.length));
+    // A free edge that stayed level would end only about 0.6 mm below the bed end; following the fall it ends several mm lower.
+    expect(tip).toBeLessThan(-0.004);
+  });
+});
