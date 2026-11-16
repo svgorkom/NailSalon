@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-NailSalon is a web app in which the owner's daughter (12) designs fingernails on a realistic 3D hand: React 19 + React Three Fiber (Three.js), TypeScript, Vite; Firebase for Google sign-in and storage. Runs locally on a Windows PC for now; Cloudflare Pages hosting is phase 7. Requirements: [docs/plans/Requirements.md](docs/plans/Requirements.md). Design and phases: [docs/plans/Design.md](docs/plans/Design.md). Known problems: [docs/tracking/Defects.md](docs/tracking/Defects.md).
+NailSalon is a web app in which the owner's daughter (12) designs fingernails on a realistic 3D hand: React 19 + React Three Fiber (Three.js), TypeScript, Vite; Firebase for Google sign-in and storage. Runs locally on a Windows PC for now; Cloudflare Workers hosting is phase 7. Requirements: [docs/plans/Requirements.md](docs/plans/Requirements.md). Design and phases: [docs/plans/Design.md](docs/plans/Design.md). Known problems: [docs/tracking/Defects.md](docs/tracking/Defects.md).
 
 ## Commands
 
