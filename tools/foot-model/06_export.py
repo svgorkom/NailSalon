@@ -48,8 +48,8 @@ skin_tree = BVHTree.FromBMesh(skin_bm)
 # The app draws the nail over its footprint: the cuticle corners are pulled in by 22% over the first 45% of the nail bed
 # (CUTICLE_PULL and CUTICLE_ZONE in src/scene/nailGeometry.ts). Fit the surface to the skin inside that footprint.
 CUTICLE_PULL, CUTICLE_ZONE = 0.22, 0.45
-UPPER_WEIGHT = 8.0      # skin above the surface weighs more, so the fit follows the upper envelope
-CLEARANCE = 0.0001      # the nail plate ends 0.1 mm above the highest skin (the app lifts its top 0.6 mm and is 0.5 mm thick)
+UPPER_WEIGHT = 2.0      # skin above the surface weighs a little more; more would flatten the nail across and make it float at the sides
+CLEARANCE = 0.0005      # skin may reach 0.5 mm above the surface: that is still inside the plate (the app puts the top 0.6 mm above the surface)
 
 collection = bpy.context.scene.collection
 for n, verts in clusters.items():

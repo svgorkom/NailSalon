@@ -12,9 +12,9 @@ const LIFT = 0.0006;
 /** The cuticle edge curves along the nail over this fraction of the nail bed, and its sides pull in by 22%. */
 const CUTICLE_ZONE = 0.45;
 const CUTICLE_PULL = 0.22;
-/** The free edge bends down, and follows the slope at the nail bed end within these limits. A toe tip falls away steeply (down to about -1.1), so the lower limit is generous. */
+/** The free edge bends down, and follows the slope at the nail bed end within these limits. A toe tip falls away steeply (down to about -1.1), so the lower limit is generous; at -1.2 the free edge curled round the tip like a claw. */
 const BEND = 9;
-const MIN_SLOPE = -1.2;
+const MIN_SLOPE = -0.5;
 const MAX_SLOPE = 0.05;
 /** Smallest half width, so a pointed tip keeps a valid triangle. */
 const MIN_HALF_WIDTH = 2e-5;
