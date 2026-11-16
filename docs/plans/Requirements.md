@@ -16,6 +16,7 @@ NailSalon is a web app in which one user, a 12-year-old girl who reads well, des
 ## 3D view
 
 - A hand that looks as realistic as possible: realistic skin, lighting and nail materials.
+- Later (added 2026-11-16 at the owner's request): a realistic right foot with five toenails, designed with the same options as the fingernails (pedicure); the left foot is its mirror image.
 - Rotate, zoom and pan with mouse and touch; a reset-view button.
 - Tap or click a nail to select it for editing; the selection is visible.
 

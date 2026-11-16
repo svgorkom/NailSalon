@@ -13,7 +13,7 @@ describe('apply', () => {
   });
 
   it('changes every nail for target all', () => {
-    const next = apply(createDesign('Test'), { type: 'setFinish', target: 'all', finish: 'chrome' });
+    const next = apply(createDesign('Test'), { type: 'setFinish', target: 'fingers', finish: 'chrome' });
 
     expect(FINGERS.every((finger) => next.nails[finger].finish === 'chrome')).toBe(true);
   });
@@ -22,7 +22,7 @@ describe('apply', () => {
     const design = createDesign('Test');
     const snapshot = structuredClone(design);
 
-    apply(design, { type: 'setColor', target: 'all', color: '#112233' });
+    apply(design, { type: 'setColor', target: 'fingers', color: '#112233' });
 
     expect(design).toEqual(snapshot);
   });

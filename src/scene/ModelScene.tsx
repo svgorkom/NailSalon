@@ -2,36 +2,50 @@ import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/d
 import { Canvas, createPortal, type ThreeEvent, useThree } from '@react-three/fiber';
 import { Fragment, useEffect, useMemo } from 'react';
 import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
-import { type Design, type Finger, FINGERS, type Finish, type Gem, type GemKind, type Nail } from '../core';
+import { type Design, type Digit, FINGERS, type Finish, type Gem, type GemKind, type Nail, nailAt, TOES } from '../core';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
 import { CLEAR_GEM, createGemGeometries, GEM_MATERIALS, gemOrientation } from './gems';
 import { findNailAnchors, type NailAnchor, type NailBed } from './nailBed';
 import { createNailGeometry, surfaceFrame } from './nailGeometry';
 import type { NailPaint } from './nailPaint';
-import { nearestFinger, type Point } from './picking';
+import { nearestDigit, type Point } from './picking';
 
-interface HandSceneProps {
+/** Which part of the body is shown. */
+export type Part = 'hand' | 'foot';
+
+interface ModelSceneProps {
+  readonly part: Part;
   readonly design: Design;
-  readonly selected: Finger | null;
+  readonly selected: Digit | null;
   readonly theme: Theme;
   /** Base colour of the skin. */
   readonly skin: string;
   /** Holds the texture of each nail: base colour, drawing and stickers. */
   readonly paint: NailPaint;
-  readonly onSelect: (finger: Finger) => void;
+  readonly onSelect: (digit: Digit) => void;
 }
 
-const HAND_URL = `${import.meta.env.BASE_URL}assets/hand/hand.glb`;
+interface PartSetup {
+  readonly url: string;
+  readonly digits: readonly Digit[];
+  readonly scale: number;
+  /** Where the camera looks, in scene units (the model scaled). */
+  readonly target: readonly [number, number, number];
+  /** A tap on the skin selects the digit whose nail is within this distance (metres): the nail itself is small on a phone. */
+  readonly pickDistance: number;
+}
 
-/** The model is in metres, with the wrist at the origin, fingers along +y and the back of the hand towards +z. */
-const HAND_SCALE = 12;
-/** Looking at the middle of the hand; the arm runs off the bottom of the view. */
-const VIEW_TARGET = [0, 1, 0] as const;
-const VIEW_POSITION = [0, 1, 4.6] as const;
-
-/** A tap on the skin selects the finger whose nail is within this distance (metres): the nail itself is small on a phone. */
-const PICK_DISTANCE = 0.03;
+/**
+ * Both models are in metres, with the wrist or ankle at the origin, fingers or toes along +y and the back of the hand or the top
+ * of the foot towards +z. The hand is looked at in the middle with the arm running off the bottom; the foot is smaller, so it is
+ * scaled less, and its middle is not at the origin: x runs from -3.6 to 5.1 cm and y from -7.7 to 18 cm.
+ */
+const SETUPS: Readonly<Record<Part, PartSetup>> = {
+  hand: { url: `${import.meta.env.BASE_URL}assets/hand/hand.glb`, digits: FINGERS, scale: 12, target: [0, 1, 0], pickDistance: 0.03 },
+  foot: { url: `${import.meta.env.BASE_URL}assets/foot/foot.glb`, digits: TOES, scale: 10, target: [0.07, 0.5, 0], pickDistance: 0.012 },
+};
+const CAMERA_DISTANCE = 4.6;
 
 const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: number; clearcoat: number }>> = {
   gloss: { roughness: 0.25, metalness: 0, clearcoat: 1 },
@@ -41,11 +55,14 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
   chrome: { roughness: 0.05, metalness: 1, clearcoat: 1 },
 };
 
-useGLTF.preload(HAND_URL);
+useGLTF.preload(SETUPS.hand.url);
+useGLTF.preload(SETUPS.foot.url);
 
-export function HandScene({ design, selected, theme, skin, paint, onSelect }: HandSceneProps) {
+export function ModelScene({ part, design, selected, theme, skin, paint, onSelect }: ModelSceneProps) {
+  const setup = SETUPS[part];
+  const [x, y, z] = setup.target;
   return (
-    <Canvas frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: VIEW_POSITION, fov: 40 }} data-testid="hand-scene">
+    <Canvas key={part} frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: [x, y, z + CAMERA_DISTANCE], fov: 40 }} data-testid={`${part}-scene`}>
       <ambientLight intensity={0.3} color={SCENE_LIGHT[theme].sky} />
       <directionalLight position={[3, 5, 4]} intensity={1.6} color={SCENE_LIGHT[theme].sun} />
       <Environment resolution={256}>
@@ -53,24 +70,25 @@ export function HandScene({ design, selected, theme, skin, paint, onSelect }: Ha
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Hand design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
-      <OrbitControls makeDefault zoomToCursor target={VIEW_TARGET} minDistance={1.2} maxDistance={9} />
+      <Body setup={setup} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
+      <OrbitControls makeDefault zoomToCursor target={setup.target} minDistance={1.2} maxDistance={9} />
     </Canvas>
   );
 }
 
-interface HandProps {
+interface BodyProps {
+  readonly setup: PartSetup;
   readonly design: Design;
-  readonly selected: Finger | null;
+  readonly selected: Digit | null;
   readonly skin: string;
   readonly paint: NailPaint;
-  readonly onSelect: (finger: Finger) => void;
+  readonly onSelect: (digit: Digit) => void;
 }
 
-function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
-  const { scene } = useGLTF(HAND_URL);
+function Body({ setup, design, selected, skin, paint, onSelect }: BodyProps) {
+  const { scene } = useGLTF(setup.url);
   const invalidate = useThree((state) => state.invalidate);
-  const anchors = useMemo(() => findNailAnchors(scene), [scene]);
+  const anchors = useMemo(() => findNailAnchors(scene, setup.digits), [scene, setup.digits]);
   const gemGeometries = useMemo(() => createGemGeometries(), []);
   useEffect(() => () => Object.values(gemGeometries).forEach((geometry) => geometry.dispose()), [gemGeometries]);
 
@@ -86,27 +104,30 @@ function Hand({ design, selected, skin, paint, onSelect }: HandProps) {
 
   const pick = (event: ThreeEvent<MouseEvent>) => {
     const local = scene.worldToLocal(event.point.clone());
-    const nails = Object.fromEntries(FINGERS.map((finger) => [finger, positionIn(scene, anchors[finger].node)])) as Record<Finger, Point>;
-    const finger = nearestFinger([local.x, local.y, local.z], nails, PICK_DISTANCE);
-    if (finger) onSelect(finger);
+    const nails = Object.fromEntries(setup.digits.map((digit) => [digit, positionIn(scene, anchors[digit].node)])) as Record<Digit, Point>;
+    const digit = nearestDigit([local.x, local.y, local.z], nails, setup.pickDistance);
+    if (digit) onSelect(digit);
   };
 
   return (
-    <group scale={HAND_SCALE}>
+    <group scale={setup.scale}>
       <primitive object={scene} onClick={pick} />
-      {FINGERS.map((finger) => (
-        <Fragment key={finger}>
-          {createPortal(
-            <>
-              <NailMesh finger={finger} nail={design.nails[finger]} anchor={anchors[finger]} paint={paint} isSelected={finger === selected} onSelect={() => onSelect(finger)} />
-              {design.nails[finger].gems.map((gem) => (
-                <GemMesh key={`${gem.id}-${gem.clear}`} gem={gem} nail={design.nails[finger]} bed={anchors[finger].bed} geometries={gemGeometries} onSelect={() => onSelect(finger)} />
-              ))}
-            </>,
-            anchors[finger].node,
-          )}
-        </Fragment>
-      ))}
+      {setup.digits.map((digit) => {
+        const nail = nailAt(design, digit);
+        return (
+          <Fragment key={digit}>
+            {createPortal(
+              <>
+                <NailMesh digit={digit} nail={nail} anchor={anchors[digit]} paint={paint} isSelected={digit === selected} onSelect={() => onSelect(digit)} />
+                {nail.gems.map((gem) => (
+                  <GemMesh key={`${gem.id}-${gem.clear}`} gem={gem} nail={nail} bed={anchors[digit].bed} geometries={gemGeometries} onSelect={() => onSelect(digit)} />
+                ))}
+              </>,
+              anchors[digit].node,
+            )}
+          </Fragment>
+        );
+      })}
     </group>
   );
 }
@@ -118,7 +139,7 @@ function positionIn(root: Object3D, node: Object3D): Point {
 }
 
 interface NailMeshProps {
-  readonly finger: Finger;
+  readonly digit: Digit;
   readonly nail: Nail;
   readonly paint: NailPaint;
   readonly anchor: NailAnchor;
@@ -126,7 +147,7 @@ interface NailMeshProps {
   readonly onSelect: () => void;
 }
 
-function NailMesh({ finger, nail, paint, anchor, isSelected, onSelect }: NailMeshProps) {
+function NailMesh({ digit, nail, paint, anchor, isSelected, onSelect }: NailMeshProps) {
   const invalidate = useThree((state) => state.invalidate);
   const geometry = useMemo(() => createNailGeometry(nail.shape, nail.length, anchor.bed), [nail.shape, nail.length, anchor.bed]);
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -134,21 +155,21 @@ function NailMesh({ finger, nail, paint, anchor, isSelected, onSelect }: NailMes
 
   // The same canvas as on the drawing pad: base colour, drawing and stickers. Its UV top is the free edge.
   const texture = useMemo(() => {
-    const created = new CanvasTexture(paint.canvas(finger));
+    const created = new CanvasTexture(paint.canvas(digit));
     created.colorSpace = SRGBColorSpace;
     created.anisotropy = 4;
     return created;
-  }, [paint, finger]);
+  }, [paint, digit]);
   useEffect(() => () => texture.dispose(), [texture]);
 
   useEffect(
     () =>
       paint.subscribe((changed) => {
-        if (changed !== finger) return;
+        if (changed !== digit) return;
         texture.needsUpdate = true;
         invalidate();
       }),
-    [paint, finger, texture, invalidate],
+    [paint, digit, texture, invalidate],
   );
 
   return (

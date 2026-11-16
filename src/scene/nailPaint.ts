@@ -1,4 +1,4 @@
-import { type Design, type Finger, FINGERS, type FrenchTip, type Gem, type Nail, type Sticker, type Stroke } from '../core';
+import { type Design, type Digit, FINGERS, type FrenchTip, type Gem, type Nail, nailAt, type Sticker, type Stroke, TOES } from '../core';
 import { GEM_OUTLINES } from './gemOutlines';
 import { STICKER_PATHS } from './stickerShapes';
 
@@ -174,67 +174,67 @@ function createSurface(createCanvas: () => HTMLCanvasElement): Surface {
  * changes per pointer move.
  */
 export class NailPaint {
-  private readonly layers = new Map<Finger, Surface>();
-  private readonly outputs = new Map<Finger, Surface>();
+  private readonly layers = new Map<Digit, Surface>();
+  private readonly outputs = new Map<Digit, Surface>();
   /** The nail each canvas shows; null when it shows something that is not (yet) in the design. */
-  private readonly painted = new Map<Finger, Nail | null>();
-  private readonly listeners = new Set<(finger: Finger) => void>();
+  private readonly painted = new Map<Digit, Nail | null>();
+  private readonly listeners = new Set<(digit: Digit) => void>();
 
   constructor(private readonly createCanvas: () => HTMLCanvasElement = () => document.createElement('canvas')) {}
 
   /** The canvas that shows the nail. It stays the same object for the life of this NailPaint. */
-  canvas(finger: Finger): HTMLCanvasElement {
-    return this.surface(this.outputs, finger).canvas;
+  canvas(digit: Digit): HTMLCanvasElement {
+    return this.surface(this.outputs, digit).canvas;
   }
 
   /** Calls the listener each time the canvas of a nail changes. Returns the function that stops it. */
-  subscribe(listener: (finger: Finger) => void): () => void {
+  subscribe(listener: (digit: Digit) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   /** Repaints the nails that no longer show what the design says. */
   sync(design: Design): void {
-    for (const finger of FINGERS) {
-      const nail = design.nails[finger];
-      if (this.painted.get(finger) !== nail) this.repaint(finger, nail);
+    for (const digit of [...FINGERS, ...TOES]) {
+      const nail = nailAt(design, digit);
+      if (this.painted.get(digit) !== nail) this.repaint(digit, nail);
     }
   }
 
   /** Adds the newest piece of a stroke that is still being drawn to these nails. The design does not change. */
-  extendStroke(design: Design, fingers: readonly Finger[], stroke: Stroke): void {
+  extendStroke(design: Design, digits: readonly Digit[], stroke: Stroke): void {
     const newest: Stroke = { ...stroke, points: stroke.points.slice(-4) };
-    for (const finger of fingers) {
-      paintStroke(this.surface(this.layers, finger).ctx, newest);
-      this.compose(finger, design.nails[finger]);
-      this.painted.set(finger, null);
+    for (const digit of digits) {
+      paintStroke(this.surface(this.layers, digit).ctx, newest);
+      this.compose(digit, nailAt(design, digit));
+      this.painted.set(digit, null);
     }
   }
 
   /** Shows a nail with a changed sticker, for example while it is dragged. The design does not change. */
-  preview(finger: Finger, nail: Nail): void {
-    this.compose(finger, nail);
-    this.painted.set(finger, null);
+  preview(digit: Digit, nail: Nail): void {
+    this.compose(digit, nail);
+    this.painted.set(digit, null);
   }
 
-  private repaint(finger: Finger, nail: Nail): void {
-    const { ctx } = this.surface(this.layers, finger);
+  private repaint(digit: Digit, nail: Nail): void {
+    const { ctx } = this.surface(this.layers, digit);
     ctx.clearRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
     for (const stroke of nail.strokes) paintStroke(ctx, stroke);
-    this.compose(finger, nail);
-    this.painted.set(finger, nail);
+    this.compose(digit, nail);
+    this.painted.set(digit, nail);
   }
 
-  private compose(finger: Finger, nail: Nail): void {
-    paintNail(this.surface(this.outputs, finger).ctx, nail, this.surface(this.layers, finger).canvas);
-    for (const listener of this.listeners) listener(finger);
+  private compose(digit: Digit, nail: Nail): void {
+    paintNail(this.surface(this.outputs, digit).ctx, nail, this.surface(this.layers, digit).canvas);
+    for (const listener of this.listeners) listener(digit);
   }
 
-  private surface(surfaces: Map<Finger, Surface>, finger: Finger): Surface {
-    let surface = surfaces.get(finger);
+  private surface(surfaces: Map<Digit, Surface>, digit: Digit): Surface {
+    let surface = surfaces.get(digit);
     if (surface === undefined) {
       surface = createSurface(this.createCanvas);
-      surfaces.set(finger, surface);
+      surfaces.set(digit, surface);
     }
     return surface;
   }
