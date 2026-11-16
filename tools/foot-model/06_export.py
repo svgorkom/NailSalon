@@ -6,6 +6,8 @@ from config import WORK
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
+from mathutils.bvhtree import BVHTree
+import bmesh
 from mpfb_boot import boot
 
 boot()
@@ -36,6 +38,19 @@ for v in nail_verts:
     if d[n] < 0.02:
         clusters[n].append(v)
 
+# The skin as it is posed, to measure the height of the skin under each nail.
+evaluated = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+skin_bm = bmesh.new()
+skin_bm.from_mesh(evaluated.to_mesh())
+skin_bm.transform(evaluated.matrix_world)
+skin_tree = BVHTree.FromBMesh(skin_bm)
+
+# The app draws the nail over its footprint: the cuticle corners are pulled in by 22% over the first 45% of the nail bed
+# (CUTICLE_PULL and CUTICLE_ZONE in src/scene/nailGeometry.ts). Fit the surface to the skin inside that footprint.
+CUTICLE_PULL, CUTICLE_ZONE = 0.22, 0.45
+UPPER_WEIGHT = 8.0      # skin above the surface weighs more, so the fit follows the upper envelope
+CLEARANCE = 0.0001      # the nail plate ends 0.1 mm above the highest skin (the app lifts its top 0.6 mm and is 0.5 mm thick)
+
 collection = bpy.context.scene.collection
 for n, verts in clusters.items():
     P = np.array([v.co[:] for v in verts])
@@ -54,7 +69,30 @@ for n, verts in clusters.items():
     ax, ay, az = q @ np.array(x[:]), q @ np.array(y[:]), q @ np.array(z[:])
     A = np.stack([ax, ay, ax * ax, ax * ay, ay * ay], axis=1)
     coef, *_ = np.linalg.lstsq(A, az, rcond=None)
+
+    # Skin heights over the footprint, measured by rays along -z, relative to the origin.
+    width, length = float(ax.max() - ax.min()), float(ay.max())
+    xs, ys, hs = [], [], []
+    for iy in range(11):
+        yy = length * iy / 10
+        half = width / 2 * (1 - CUTICLE_PULL * (1 - min(yy / (CUTICLE_ZONE * length), 1)) ** 2)
+        for ix in range(-4, 5):
+            xx = ix / 4 * half
+            top = Vector(origin) + xx * x + yy * y + 0.01 * z
+            hit = skin_tree.ray_cast(top, -z, 0.03)
+            if hit[0] is not None:
+                xs.append(xx); ys.append(yy); hs.append(0.01 - hit[3])
+    xs, ys, hs = np.array(xs), np.array(ys), np.array(hs)
+    G = np.stack([xs, ys, xs * xs, xs * ys, ys * ys], axis=1)
+    weights = np.ones(len(hs))
+    for _ in range(10):
+        coef, *_ = np.linalg.lstsq(G * weights[:, None], hs * weights, rcond=None)
+        weights = np.where(hs - G @ coef > 0, UPPER_WEIGHT, 1.0)
     gx, gy, gxx, gxy, gyy = (float(k) for k in coef)
+    # The surface has no constant term, so lifting it means moving the origin up along z.
+    lift = max(0.0, float((hs - G @ coef).max()) - CLEARANCE)
+    origin = Vector(origin) + lift * z
+    print(f'{TOES[n]}: lift {lift * 1000:.2f} mm, skin below the surface {(-(hs - G @ coef - lift)).mean() * 1000:.2f} mm on average')
 
     # In the glTF export the local axes of an empty (x, y, z) become (x, z, -y): the frame in Blender is (across, -up, along).
     frame = Matrix(((x[0], -z[0], y[0], origin[0]),
