@@ -16,10 +16,10 @@ import {
   type StickerPlacement,
   type Stroke,
 } from './decoration';
-import { type Design, type Finger, type Finish, FINGERS, type HexColor, isHexColor, MAX_LENGTH, MIN_LENGTH, type Nail, type NailShape } from './design';
+import { type Design, type Digit, type Finish, FINGERS, type HexColor, isHexColor, isToe, MAX_LENGTH, MIN_LENGTH, type Nail, type NailShape, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from './design';
 
-/** Which nails a command applies to: one finger, or all of them. */
-export type Target = Finger | 'all';
+/** Which nails a command applies to: one finger or toe, all fingernails or all toenails. */
+export type Target = Digit | 'fingers' | 'toes';
 
 export type Command =
   | { readonly type: 'setShape'; readonly target: Target; readonly shape: NailShape }
@@ -55,12 +55,14 @@ export function apply(design: Design, command: Command): Design {
       return { ...design, name };
     }
     case 'setShape':
+      if (targetsToes(command.target) && !TOE_SHAPES.includes(command.shape)) throw new RangeError(`Toenails cannot have the shape ${command.shape}.`);
       return updateNails(design, command.target, (nail) => ({ ...nail, shape: command.shape }));
     case 'setLength': {
       const { length } = command;
       if (!Number.isFinite(length) || length < MIN_LENGTH || length > MAX_LENGTH) {
         throw new RangeError(`Length must be between ${MIN_LENGTH} and ${MAX_LENGTH}.`);
       }
+      if (targetsToes(command.target) && length > TOE_MAX_LENGTH) throw new RangeError(`Toenail length must be at most ${TOE_MAX_LENGTH}.`);
       return updateNails(design, command.target, (nail) => ({ ...nail, length }));
     }
     case 'setColor': {
@@ -130,14 +132,31 @@ export function apply(design: Design, command: Command): Design {
   }
 }
 
-function targetFingers(target: Target): readonly Finger[] {
-  return target === 'all' ? FINGERS : [target];
+/** The fingers or toes a target stands for. */
+export function targetDigits(target: Target): readonly Digit[] {
+  if (target === 'fingers') return FINGERS;
+  if (target === 'toes') return TOES;
+  return [target];
+}
+
+function targetsToes(target: Target): boolean {
+  return target === 'toes' || (target !== 'fingers' && isToe(target));
+}
+
+/** Replaces the nails at the given places; fingers and toes live in separate records. */
+function withNails(design: Design, changes: ReadonlyMap<Digit, Nail>): Design {
+  const nails = { ...design.nails } as Record<string, Nail>;
+  const toenails = { ...design.toenails } as Record<string, Nail>;
+  for (const [digit, nail] of changes) (isToe(digit) ? toenails : nails)[digit] = nail;
+  return { ...design, nails: nails as Design['nails'], toenails: toenails as Design['toenails'] };
+}
+
+function nailOf(design: Design, digit: Digit): Nail {
+  return isToe(digit) ? design.toenails[digit] : design.nails[digit];
 }
 
 function updateNails(design: Design, target: Target, update: (nail: Nail) => Nail): Design {
-  const nails = { ...design.nails };
-  for (const finger of targetFingers(target)) nails[finger] = update(nails[finger]);
-  return { ...design, nails };
+  return withNails(design, new Map(targetDigits(target).map((digit) => [digit, update(nailOf(design, digit))])));
 }
 
 type Layer = 'stickers' | 'gems';
@@ -145,10 +164,8 @@ type LayerItem<L extends Layer> = L extends 'stickers' ? Sticker : Gem;
 
 /** Changes the stickers or gems of the targeted nails that have an item with this id. Throws if none has. */
 function updateItems<L extends Layer>(design: Design, target: Target, layer: L, id: string, update: (items: readonly LayerItem<L>[]) => readonly LayerItem<L>[]): Design {
-  const items = (finger: Finger) => design.nails[finger][layer] as readonly LayerItem<L>[];
-  const fingers = targetFingers(target).filter((finger) => items(finger).some((item) => item.id === id));
-  if (fingers.length === 0) throw new RangeError(`${layer === 'gems' ? 'Gem' : 'Sticker'} ${id} does not exist.`);
-  const nails = { ...design.nails };
-  for (const finger of fingers) nails[finger] = { ...nails[finger], [layer]: update(items(finger)) };
-  return { ...design, nails };
+  const items = (digit: Digit) => nailOf(design, digit)[layer] as readonly LayerItem<L>[];
+  const digits = targetDigits(target).filter((digit) => items(digit).some((item) => item.id === id));
+  if (digits.length === 0) throw new RangeError(`${layer === 'gems' ? 'Gem' : 'Sticker'} ${id} does not exist.`);
+  return withNails(design, new Map(digits.map((digit) => [digit, { ...nailOf(design, digit), [layer]: update(items(digit)) }])));
 }

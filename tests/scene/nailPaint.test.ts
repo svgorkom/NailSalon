@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apply, createDesign, type Design, FINGERS, type Sticker, type Stroke } from '../../src/core';
+import { apply, createDesign, type Design, FINGERS, type Sticker, type Stroke, TOES } from '../../src/core';
 import { NailPaint, paintFrenchTip, paintGem, paintNail, paintStroke, TEXTURE_HEIGHT, TEXTURE_WIDTH } from '../../src/scene/nailPaint';
 
 /** A canvas context that records what is called and set, in order. */
@@ -159,7 +159,7 @@ describe('NailPaint', () => {
     paint.subscribe((finger) => changed.push(finger));
 
     paint.sync(design);
-    expect(changed).toEqual([...FINGERS]);
+    expect(changed).toEqual([...FINGERS, ...TOES]);
 
     changed.length = 0;
     paint.sync(design);

@@ -22,8 +22,8 @@ describe('history', () => {
   });
 
   it('clears redo after a new change', () => {
-    const changed = execute(createHistory(createDesign('Test')), { type: 'setFinish', target: 'all', finish: 'matte' });
-    const branched = execute(undo(changed), { type: 'setFinish', target: 'all', finish: 'chrome' });
+    const changed = execute(createHistory(createDesign('Test')), { type: 'setFinish', target: 'fingers', finish: 'matte' });
+    const branched = execute(undo(changed), { type: 'setFinish', target: 'fingers', finish: 'chrome' });
 
     expect(canRedo(branched)).toBe(false);
   });

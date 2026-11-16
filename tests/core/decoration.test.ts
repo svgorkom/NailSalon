@@ -14,7 +14,7 @@ describe('strokes', () => {
   });
 
   it('adds the stroke to every nail for target all and lower-cases the colour', () => {
-    const next = apply(createDesign('Test'), { type: 'addStroke', target: 'all', stroke });
+    const next = apply(createDesign('Test'), { type: 'addStroke', target: 'fingers', stroke });
 
     expect(FINGERS.every((finger) => next.nails[finger].strokes[0]?.color === '#aa0000')).toBe(true);
   });
@@ -23,7 +23,7 @@ describe('strokes', () => {
     const design = createDesign('Test');
     const snapshot = structuredClone(design);
 
-    apply(design, { type: 'addStroke', target: 'all', stroke });
+    apply(design, { type: 'addStroke', target: 'fingers', stroke });
 
     expect(design).toEqual(snapshot);
   });
@@ -51,7 +51,7 @@ describe('strokes', () => {
     const history = createHistory(createDesign('Test'));
 
     expect(apply(drawn, { type: 'clearDrawing', target: 'thumb' }).nails.thumb.strokes).toEqual([]);
-    expect(execute(history, { type: 'clearDrawing', target: 'all' })).toBe(history);
+    expect(execute(history, { type: 'clearDrawing', target: 'fingers' })).toBe(history);
   });
 
   it('undoes one stroke at a time', () => {
@@ -71,7 +71,7 @@ describe('stickers', () => {
   });
 
   it('adds the same sticker to all nails', () => {
-    const next = apply(createDesign('Test'), { type: 'addSticker', target: 'all', sticker });
+    const next = apply(createDesign('Test'), { type: 'addSticker', target: 'fingers', sticker });
 
     expect(FINGERS.every((finger) => next.nails[finger].stickers.length === 1)).toBe(true);
   });
@@ -105,7 +105,7 @@ describe('stickers', () => {
   it('updates only the nails that have the sticker', () => {
     let design = apply(createDesign('Test'), { type: 'addSticker', target: 'thumb', sticker });
     design = apply(design, { type: 'addSticker', target: 'index', sticker });
-    const next = apply(design, { type: 'updateSticker', target: 'all', id: 's1', placement: { x: 0.1, y: 0.1, size: 0.3, rotation: 0 } });
+    const next = apply(design, { type: 'updateSticker', target: 'fingers', id: 's1', placement: { x: 0.1, y: 0.1, size: 0.3, rotation: 0 } });
 
     expect(next.nails.thumb.stickers[0]?.x).toBe(0.1);
     expect(next.nails.index.stickers[0]?.x).toBe(0.1);
@@ -140,7 +140,7 @@ describe('French tip', () => {
   const french = { color: '#FFFFFF', depth: 0.2 };
 
   it('sets a French tip with a lower-case colour on the targeted nails', () => {
-    const next = apply(createDesign('Test'), { type: 'setFrench', target: 'all', french });
+    const next = apply(createDesign('Test'), { type: 'setFrench', target: 'fingers', french });
 
     expect(FINGERS.every((finger) => next.nails[finger].french?.color === '#ffffff')).toBe(true);
   });
@@ -187,7 +187,7 @@ describe('gems', () => {
 
   it('moves, resizes and rotates a gem on the nails that have it', () => {
     const placed = apply(createDesign('Test'), { type: 'addGem', target: 'ring', gem });
-    const next = apply(placed, { type: 'updateGem', target: 'all', id: 'g1', placement: { x: 0.2, y: 0.3, size: 0.3, rotation: 375 } });
+    const next = apply(placed, { type: 'updateGem', target: 'fingers', id: 'g1', placement: { x: 0.2, y: 0.3, size: 0.3, rotation: 375 } });
 
     expect(next.nails.ring.gems[0]).toMatchObject({ x: 0.2, y: 0.3, size: 0.3, rotation: 15 });
     expect(next.nails.thumb).toBe(placed.nails.thumb);
@@ -201,21 +201,21 @@ describe('gems', () => {
   });
 
   it('changes the colour and clearness of a gem, keeping its place', () => {
-    const placed = apply(createDesign('Test'), { type: 'addGem', target: 'all', gem });
-    const next = apply(placed, { type: 'styleGem', target: 'all', id: 'g1', look: { color: '#FF0000', clear: true } });
+    const placed = apply(createDesign('Test'), { type: 'addGem', target: 'fingers', gem });
+    const next = apply(placed, { type: 'styleGem', target: 'fingers', id: 'g1', look: { color: '#FF0000', clear: true } });
 
     expect(next.nails.little.gems[0]).toEqual({ ...placed.nails.little.gems[0], color: '#ff0000', clear: true });
-    expect(() => apply(placed, { type: 'styleGem', target: 'all', id: 'g1', look: { color: 'red', clear: true } })).toThrow(RangeError);
-    expect(() => apply(placed, { type: 'styleGem', target: 'all', id: 'nope', look: { color: '#ff0000', clear: true } })).toThrow(RangeError);
+    expect(() => apply(placed, { type: 'styleGem', target: 'fingers', id: 'g1', look: { color: 'red', clear: true } })).toThrow(RangeError);
+    expect(() => apply(placed, { type: 'styleGem', target: 'fingers', id: 'nope', look: { color: '#ff0000', clear: true } })).toThrow(RangeError);
   });
 
   it('changes the kind of a gem, keeping its place and look', () => {
-    const placed = apply(createDesign('Test'), { type: 'addGem', target: 'all', gem });
-    const next = apply(placed, { type: 'setGemKind', target: 'all', id: 'g1', kind: 'star' });
+    const placed = apply(createDesign('Test'), { type: 'addGem', target: 'fingers', gem });
+    const next = apply(placed, { type: 'setGemKind', target: 'fingers', id: 'g1', kind: 'star' });
 
     expect(next.nails.little.gems[0]).toEqual({ ...placed.nails.little.gems[0], kind: 'star' });
-    expect(() => apply(placed, { type: 'setGemKind', target: 'all', id: 'g1', kind: 'ruby' as Gem['kind'] })).toThrow(RangeError);
-    expect(() => apply(placed, { type: 'setGemKind', target: 'all', id: 'nope', kind: 'star' })).toThrow(RangeError);
+    expect(() => apply(placed, { type: 'setGemKind', target: 'fingers', id: 'g1', kind: 'ruby' as Gem['kind'] })).toThrow(RangeError);
+    expect(() => apply(placed, { type: 'setGemKind', target: 'fingers', id: 'nope', kind: 'star' })).toThrow(RangeError);
   });
 
   it('removes one gem and clears all, and clearing nothing records nothing', () => {
@@ -224,6 +224,6 @@ describe('gems', () => {
     expect(apply(two, { type: 'removeGem', target: 'thumb', id: 'g1' }).nails.thumb.gems.map(({ id }) => id)).toEqual(['g2']);
     expect(apply(two, { type: 'clearGems', target: 'thumb' }).nails.thumb.gems).toEqual([]);
     const history = createHistory(createDesign('Test'));
-    expect(execute(history, { type: 'clearGems', target: 'all' })).toBe(history);
+    expect(execute(history, { type: 'clearGems', target: 'fingers' })).toBe(history);
   });
 });

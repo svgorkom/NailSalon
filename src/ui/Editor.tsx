@@ -1,14 +1,18 @@
-import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
+import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
+import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
 import { NailPaint } from '../scene/nailPaint';
 import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
-import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
+import { type Action } from './historyReducer';
+import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
 import { THEME_LABELS, THEMES, type Theme } from './theme';
 import { clampToolsWidth, loadToolsWidth, saveToolsWidth } from './toolsWidth';
 
-const HandScene = lazy(() => import('../scene/HandScene').then((module) => ({ default: module.HandScene })));
+const ModelScene = lazy(() => import('../scene/ModelScene').then((module) => ({ default: module.ModelScene })));
+
+/** Which part of the body is being painted. */
+export type Part = 'hand' | 'foot';
 
 type Mode = 'look' | 'draw' | 'sticker' | 'gem';
 
@@ -17,29 +21,32 @@ const MODE_LABELS: Readonly<Record<Mode, string>> = { look: '💅 Lak', draw: '�
 /** A French tip when it is turned on: white, over about a quarter of the nail. */
 const NEW_FRENCH: FrenchTip = { color: '#f7f3ee', depth: 0.25 };
 
-type Action = { readonly type: 'command'; readonly command: Command } | { readonly type: 'undo' } | { readonly type: 'redo' };
-
-function reducer(history: History, action: Action): History {
-  switch (action.type) {
-    case 'command':
-      return execute(history, action.command);
-    case 'undo':
-      return undo(history);
-    case 'redo':
-      return redo(history);
+/** The number after the highest `s…` or `g…` id in the design, so a new sticker or gem never gets an id a nail already has. */
+function nextItemNumber(design: Design): number {
+  let highest = 0;
+  for (const digit of [...FINGERS, ...TOES]) {
+    const nail = nailAt(design, digit);
+    for (const { id } of [...nail.stickers, ...nail.gems]) highest = Math.max(highest, Number(id.slice(1)) || 0);
   }
+  return highest + 1;
 }
 
 interface EditorProps {
+  readonly part: Part;
+  readonly history: History;
+  readonly dispatch: Dispatch<Action>;
   readonly theme: Theme;
   readonly onThemeChange: (theme: Theme) => void;
   readonly skin: SkinToneId;
   readonly onSkinChange: (skin: SkinToneId) => void;
 }
 
-export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps) {
-  const [history, dispatch] = useReducer(reducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
-  const [selected, setSelected] = useState<Finger | null>(null);
+export function Editor({ part, history, dispatch, theme, onThemeChange, skin, onSkinChange }: EditorProps) {
+  const digits: readonly Digit[] = part === 'hand' ? FINGERS : TOES;
+  const allTarget = part === 'hand' ? 'fingers' : 'toes';
+  const shapes = part === 'hand' ? NAIL_SHAPES : TOE_SHAPES;
+  const maxLength = part === 'hand' ? MAX_LENGTH : TOE_MAX_LENGTH;
+  const [selected, setSelected] = useState<Digit | null>(null);
   const [allNails, setAllNails] = useState(false);
   const [mode, setMode] = useState<Mode>('look');
   const [eraser, setEraser] = useState(false);
@@ -55,20 +62,23 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   const editorRef = useRef<HTMLDivElement>(null);
   const [toolsWidth, setToolsWidth] = useState(loadToolsWidth);
   const design = history.present;
-  const target = allNails ? 'all' : selected;
-  // For all nails at once the slider shows the index finger; the command then sets every nail.
-  const lengthShown = design.nails[target === null || target === 'all' ? 'index' : target].length;
-  // The pad shows the chosen nail; with all nails it shows the middle finger unless another is chosen.
-  const padFinger = selected ?? (allNails ? 'middle' : null);
-  const padNail = padFinger === null ? undefined : design.nails[padFinger];
-  const shownNail = design.nails[target === null || target === 'all' ? 'index' : target];
+  const target = allNails ? allTarget : selected;
+  /** The one chosen nail; null for all nails or none. */
+  const single = allNails ? null : selected;
+  // For all nails at once the slider shows the first digit that is not the thumb or big toe; the command then sets every nail.
+  const typical: Digit = part === 'hand' ? 'index' : 'secondToe';
+  const lengthShown = nailAt(design, single ?? typical).length;
+  // The pad shows the chosen nail; with all nails it shows a middle one unless another is chosen.
+  const padDigit = selected ?? (allNails ? (part === 'hand' ? 'middle' : 'thirdToe') : null);
+  const padNail = padDigit === null ? undefined : nailAt(design, padDigit);
+  const shownNail = nailAt(design, single ?? typical);
   // For all nails the French tip shows as on only when every nail has the same one.
-  const frenchShown = target === 'all' ? (FINGERS.every((finger) => JSON.stringify(design.nails[finger].french) === JSON.stringify(shownNail.french)) ? shownNail.french : null) : shownNail.french;
+  const frenchShown = single === null ? (digits.every((digit) => JSON.stringify(nailAt(design, digit).french) === JSON.stringify(shownNail.french)) ? shownNail.french : null) : shownNail.french;
   const selectedGem = padNail?.gems.find(({ id }) => id === selectedItem);
   const modeLabelId = useId();
   /** Whether a choice is the current one: for one nail its value, for all nails only if every nail has it. */
   const shown = <K extends 'shape' | 'color' | 'finish'>(key: K, value: Nail[K]): boolean =>
-    target === null ? false : target === 'all' ? FINGERS.every((finger) => design.nails[finger][key] === value) : design.nails[target][key] === value;
+    target === null ? false : single === null ? digits.every((digit) => nailAt(design, digit)[key] === value) : nailAt(design, single)[key] === value;
 
   // Before the browser paints, so the nail never shows a stale texture for one frame.
   useLayoutEffect(() => paint.sync(design), [paint, design]);
@@ -117,8 +127,8 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
   return (
     <div className="editor" ref={editorRef} style={{ ['--tools-width' as string]: `${toolsWidth}px` }}>
       <div className="viewer">
-        <Suspense fallback={<p className="loading">Hand laden…</p>}>
-          <HandScene design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
+        <Suspense fallback={<p className="loading">{part === 'hand' ? 'Hand' : 'Voet'} laden…</p>}>
+          <ModelScene part={part} design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
         </Suspense>
         <div className="vignette" />
       </div>
@@ -148,7 +158,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
           </div>
           <div className="row target">
             <p className="status" role="status">
-              {target === null ? 'Tik op een nagel' : target === 'all' ? 'Alle nagels' : FINGER_LABELS[target]}
+              {allNails ? 'Alle nagels' : selected === null ? 'Tik op een nagel' : DIGIT_LABELS[selected]}
             </p>
             <label className="toggle">
               <input type="checkbox" role="switch" className="switch" checked={allNails} onChange={(event) => setAllNails(event.target.checked)} />
@@ -170,7 +180,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
               <fieldset disabled={target === null}>
                 <legend>Vorm</legend>
                 <div className="choices">
-                  {NAIL_SHAPES.map((shape) => (
+                  {shapes.map((shape) => (
                     <button key={shape} type="button" className="choice" aria-pressed={shown('shape', shape)} onClick={() => target && send({ type: 'setShape', target, shape })}>
                       {SHAPE_LABELS[shape]}
                     </button>
@@ -183,8 +193,8 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                   type="range"
                   className="length"
                   min={0}
-                  max={1}
-                  step={0.1}
+                  max={maxLength}
+                  step={part === 'hand' ? 0.1 : 0.05}
                   value={lengthShown}
                   aria-label="Lengte van de nagel"
                   onChange={(event) => target && send({ type: 'setLength', target, length: Number(event.target.value) })}
@@ -225,7 +235,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
           ) : (
             <>
               <NailPad
-                finger={padFinger}
+                digit={padDigit}
                 target={target}
                 design={design}
                 paint={paint}
@@ -238,7 +248,7 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
                 selectedItem={selectedItem}
                 onCommand={send}
                 onSelectItem={setSelectedItem}
-                newItemId={() => `${mode === 'gem' ? 'g' : 's'}${(itemCount.current += 1)}`}
+                newItemId={() => `${mode === 'gem' ? 'g' : 's'}${(itemCount.current = Math.max(itemCount.current, nextItemNumber(design) - 1) + 1)}`}
               />
               <fieldset disabled={target === null} className="bare">
                 {mode !== 'gem' && <ColorTool color={toolColor} onChange={setToolColor} />}
