@@ -36,8 +36,8 @@ Per selected nail, or for all nails at once:
 ## Saving and sharing
 
 - Designs are saved in the cloud per account, so laptop and phone show the same designs.
-- A "Mijn ontwerpen" overview: open, rename, duplicate, delete.
-- Export the current view as a PNG; on the phone also share it via the system share sheet.
+- A "Mijn ontwerpen" overview: open, rename, duplicate, delete, mark as favourite.
+- Export the current view as a PNG, saved on the device (download); on the phone also share it via the system share sheet. Images are not stored in the cloud.
 - Only images leave the app; designs themselves are never public.
 
 ## Language and tone
@@ -50,7 +50,7 @@ Per selected nail, or for all nails at once:
 - Until the last phase the app runs locally on the owner's Windows PC (`npm run dev`).
 - Last phase: static site on Cloudflare Workers (static assets), deployed automatically on every merge to `main`.
 - Access: only the owner and the daughter, via a Google login in front of the whole site (Cloudflare Access).
-- Sign-in and storage with Firebase (Authentication, Firestore, Storage); `localhost` works for sign-in during local use.
+- Sign-in is the Cloudflare Access login; designs are stored in Cloudflare D1 behind the same login. Saving needs the online app; locally the editor works without it.
 
 ## Out of scope
 

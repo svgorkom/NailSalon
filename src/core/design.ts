@@ -14,6 +14,9 @@ export type Finish = (typeof FINISHES)[number];
 export const MIN_LENGTH = 0;
 export const MAX_LENGTH = 1;
 
+/** Longest name a design may have. */
+export const MAX_NAME_LENGTH = 60;
+
 /** A colour as `#rrggbb`. */
 export type HexColor = string;
 

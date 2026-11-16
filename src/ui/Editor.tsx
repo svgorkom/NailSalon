@@ -1,7 +1,10 @@
 import { type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { canRedo, canUndo, type Command, createDesign, createHistory, execute, type Finger, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
+import { canRedo, canUndo, type Command, createDesign, type Design, createHistory, execute, type Finger, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, type Nail, NAIL_SHAPES, redo, type StickerKind, undo } from '../core';
 import { NailPaint } from '../scene/nailPaint';
+import type { DesignRepository } from '../data/designRepository';
 import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
+import { DesignsMenu } from './DesignsMenu';
+import { highestItemNumber } from './saving';
 import { FINGER_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
@@ -17,7 +20,12 @@ const MODE_LABELS: Readonly<Record<Mode, string>> = { look: 'ðŸ’… Lak', draw: 'â
 /** A French tip when it is turned on: white, over about a quarter of the nail. */
 const NEW_FRENCH: FrenchTip = { color: '#f7f3ee', depth: 0.25 };
 
-type Action = { readonly type: 'command'; readonly command: Command } | { readonly type: 'undo' } | { readonly type: 'redo' };
+type Action =
+  | { readonly type: 'command'; readonly command: Command }
+  | { readonly type: 'undo' }
+  | { readonly type: 'redo' }
+  /** An opened or new design; undo does not go back past it. */
+  | { readonly type: 'load'; readonly design: Design };
 
 function reducer(history: History, action: Action): History {
   switch (action.type) {
@@ -27,6 +35,8 @@ function reducer(history: History, action: Action): History {
       return undo(history);
     case 'redo':
       return redo(history);
+    case 'load':
+      return createHistory(action.design);
   }
 }
 
@@ -35,9 +45,11 @@ interface EditorProps {
   readonly onThemeChange: (theme: Theme) => void;
   readonly skin: SkinToneId;
   readonly onSkinChange: (skin: SkinToneId) => void;
+  readonly repository: DesignRepository;
+  readonly newId: () => string;
 }
 
-export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps) {
+export function Editor({ theme, onThemeChange, skin, onSkinChange, repository, newId }: EditorProps) {
   const [history, dispatch] = useReducer(reducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
   const [selected, setSelected] = useState<Finger | null>(null);
   const [allNails, setAllNails] = useState(false);
@@ -136,6 +148,18 @@ export function Editor({ theme, onThemeChange, skin, onSkinChange }: EditorProps
       />
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="tools-head">
+          <DesignsMenu
+            design={design}
+            repository={repository}
+            newId={newId}
+            onRename={(name) => send({ type: 'rename', name })}
+            onLoad={(loaded) => {
+              dispatch({ type: 'load', design: loaded });
+              itemCount.current = highestItemNumber(loaded);
+              setSelected(null);
+              setSelectedItem(null);
+            }}
+          />
           <div className="tabs" role="group" aria-labelledby={modeLabelId}>
             <span id={modeLabelId} className="visually-hidden">
               Wat wil je doen?
