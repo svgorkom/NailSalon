@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nailsalon",
+  "compatibility_date": "2026-11-16",
+  "observability": { "enabled": true },
+  "assets": {
+    // The Vite build writes here (see vite.config.ts).
+    "directory": "./host/wwwroot",
+    // Unknown paths get index.html, like MapFallbackToFile in host/Program.cs.
+    "not_found_handling": "single-page-application"
+  },
+  // The site lives on the workers.dev address, behind Cloudflare Access.
+  "workers_dev": true,
+  // Branch previews are not used; one address less to protect.
+  "preview_urls": false
+}

@@ -48,7 +48,8 @@ Per selected nail, or for all nails at once:
 ## Hosting
 
 - Until the last phase the app runs locally on the owner's Windows PC (`npm run dev`).
-- Last phase: static site on Cloudflare Workers (static assets), deployed from `main`.
+- Last phase: static site on Cloudflare Workers (static assets), deployed automatically on every merge to `main`.
+- Access: only the owner and the daughter, via a Google login in front of the whole site (Cloudflare Access).
 - Sign-in and storage with Firebase (Authentication, Firestore, Storage); `localhost` works for sign-in during local use.
 
 ## Out of scope

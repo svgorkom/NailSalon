@@ -12,7 +12,7 @@ How NailSalon meets [Requirements.md](Requirements.md), and the phases to build 
 | Build | Vite | Fast dev server and build. |
 | Tests | Vitest (logic, components with jsdom), Playwright (browser smoke) | |
 | Auth and data | Firebase Authentication (Google), Firestore, Storage | Google sign-in without our own server; free at this scale. |
-| Hosting | Local (`npm run dev`) until phase 7, then Cloudflare Workers static assets | Cloudflare's recommended path for new sites; deployed with Wrangler. |
+| Hosting | Local (`npm run dev`) until phase 7, then Cloudflare Workers static assets (Git integration) | Cloudflare builds and deploys on every push to `main`; no tokens or CI job. |
 
 Blazor (as in Triominos) was rejected: free drawing updates the nail texture on every pointer move, which would mean C#↔JS interop per event.
 
@@ -30,7 +30,7 @@ ui  →  scene  →  core
 - **Nail texture**: per nail, a 2D canvas combines base colour, the French tip (from the free edge down to its depth, ending in a smile line that is deepest at the sides), the drawing layer (eraser strokes only remove drawing, never the base colour), then stickers, clipped to the nail outline (other patterns go between base colour and drawing, like the French tip). The canvas is the live texture of the nail and the same canvas is shown on the drawing pad. Positions are fractions of the nail (x across, y from free edge to cuticle), sizes fractions of its width. A stroke that is being drawn goes straight onto the canvas; only the finished stroke becomes a command, so one stroke is one undo step. Sticker shapes are SVG paths in code (original, no asset licence).
 - **Gems**: 3D meshes standing on the nail, not part of the texture. A gem uses the same texture position and size as a sticker; `surfaceFrame` in `src/scene/nailGeometry.ts` turns it into a point and normal on the nail plate with the same formula as the mesh, so the gem sits where the pad shows it. Shapes are made in code (`src/scene/gems.ts`): a faceted lathe for the diamond, a flattened half sphere for the pearl, a bevelled extruded heart, and bevelled extrusions of the flat outlines in `src/scene/gemOutlines.ts` (square, drop, star), which the pad and the kind buttons draw too; one geometry per kind is shared. Solid gems are faceted with clearcoat and iridescence; clear gems use transmission (glass), tinted by their colour. The pad draws gems flat over the texture; while a gem is dragged only the pad follows, and the 3D gem moves when it is let go.
 - **`src/ui`**: screens (sign-in, Mijn ontwerpen, editor), the tool bar and the drawing pad. Sends commands to `core`; holds no rules.
-- **`src/data`**: `DesignRepository` interface with a Firebase implementation and an in-memory one for tests. Firestore `users/{uid}/designs/{designId}`; drawing strokes are vector data inside the design document (replayed onto the nail texture), so undo and redo are exact; PNG files in Storage are only for exported images, under `users/{uid}/designs/{designId}/`. Security rules allow only the owner's daughter's uid.
+- **`src/data`**: `DesignRepository` interface with a Firebase implementation and an in-memory one for tests. Firestore `users/{uid}/designs/{designId}`; drawing strokes are vector data inside the design document (replayed onto the nail texture), so undo and redo are exact; PNG files in Storage are only for exported images, under `users/{uid}/designs/{designId}/`. Security rules allow only the two family accounts (owner and daughter).
 
 ## Performance
 
@@ -43,7 +43,8 @@ ui  →  scene  →  core
 
 - Phases 1-6: the app runs locally on a Windows PC: F5 in Visual Studio runs `host/NailSalon.Host` (ASP.NET Core serving the Vite build in `host/wwwroot`), as in TriominosTheGame; `npm run dev` gives hot reload. CI lints, tests and builds, including the host.
 - Sign-in uses `signInWithPopup`; `localhost` is a Firebase authorized domain by default. The redirect flow is unreliable on domains other than Firebase Hosting, so popup stays the choice after deployment.
-- Phase 7: Cloudflare Workers with static assets (Wrangler config serving `host/wwwroot`, SPA fallback to `index.html`), deployed by GitHub Actions on push to `main` (secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). The Cloudflare domain is added to Firebase *authorized domains*.
+- Phase 7: Cloudflare Workers with static assets, connected to the GitHub repository (Workers Builds). Production branch `main`; build command `npm run build`; deploy command `npx wrangler deploy`; `wrangler.jsonc` serves `host/wwwroot` with SPA fallback to `index.html`. The `workers.dev` address is added to Firebase *authorized domains*.
+- Access control: the whole site (the `workers.dev` address) sits behind Cloudflare Access (free plan), with one Allow policy for the owner's and the daughter's accounts (Google login; one-time PIN by e-mail as a fallback), set on the Worker's *Access* tab. The app needs no sign-in code for this. Preview URLs stay off. A custom domain is not used for now.
 
 ## Phases
 
@@ -55,7 +56,7 @@ Each phase on its own branch; the owner merges.
 4. **Free drawing**: drawing pad, brush, eraser, live texture.
 5. **Sign-in and cloud**: Firebase, Google sign-in, saving, Mijn ontwerpen.
 6. **Export and share**: PNG export, Web Share API.
-7. **Deploy**: Cloudflare Workers, deploy job in CI, Cloudflare domain in Firebase.
+7. **Deploy**: Cloudflare Workers with Access, workers.dev address in Firebase.
 
 ## Open items
 

@@ -32,7 +32,7 @@ dotnet build host    # what F5 in Visual Studio does: npm install + npm run buil
 - Logic gets Vitest tests in `tests/` (mirroring `src/`). Fix bugs test-first. No randomness or time without injecting it.
 - Performance: `frameloop="demand"`, invalidate only on change, DPR capped at 2. Never set React state per frame; use refs and `useFrame`. Check the Chrome profiler after visual changes (60 fps, frame under 10 ms, also on a phone).
 - Dispose Three.js resources you create outside JSX (textures, canvases, geometries).
-- Only the daughter's account may read or write data; never weaken the Firebase security rules. No analytics, no tracking, no third-party scripts.
+- Only the two family accounts (owner and daughter) may read or write data; never weaken the Firebase security rules. No analytics, no tracking, no third-party scripts.
 - Assets (models, HDRIs, stickers) need a licence that allows this use; record source and licence in `public/assets/CREDITS.md`.
 - No unused constants or exports, no hidden side effects (functions that mutate their arguments).
 - Do not invent requirements; they are in the plan. If unclear, ask.
