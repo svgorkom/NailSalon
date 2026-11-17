@@ -1,4 +1,4 @@
-import { assertFrenchTip, assertGem, assertSticker, assertStroke, type FrenchTip, type Gem, GEM_KINDS, type Sticker, STICKER_KINDS, type Stroke } from './decoration';
+import { assertFrenchTip, assertGem, assertSticker, assertStroke, type FrenchTip, type Gem, GEM_KINDS, type Sponge, type Sticker, STICKER_KINDS, type Stroke } from './decoration';
 import { type Design, type Digit, type Finger, FINGERS, FINISHES, isToe, MAX_LENGTH, MAX_NAME_LENGTH, MIN_LENGTH, type Nail, NAIL_SHAPES, type Toe, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from './design';
 
 type Fields = Readonly<Record<string, unknown>>;
@@ -48,9 +48,15 @@ function parseStroke(value: unknown): Stroke {
   const points = list(fields.points, 'Stroke points').map((point) => number(point, 'Stroke point'));
   const erase = fields.erase;
   if (typeof erase !== 'boolean') throw new RangeError('Stroke erase must be true or false.');
-  const stroke = { color: colour(fields.color, 'Stroke colour'), size: number(fields.size, 'Brush size'), erase, points };
+  const base = { color: colour(fields.color, 'Stroke colour'), size: number(fields.size, 'Brush size'), erase, points };
+  const stroke: Stroke = fields.sponge === undefined ? base : { ...base, sponge: parseSponge(fields.sponge) };
   assertStroke(stroke);
   return stroke;
+}
+
+function parseSponge(value: unknown): Sponge {
+  const fields = record(value, 'Sponge');
+  return { seed: number(fields.seed, 'Sponge seed'), opacity: number(fields.opacity, 'Sponge opacity') };
 }
 
 function parseSticker(value: unknown): Sticker {
