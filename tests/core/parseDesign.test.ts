@@ -51,7 +51,7 @@ describe('parseDesign', () => {
     ['a bad French tip', () => broken((data) => (data.nails.thumb.french = { color: '#ffffff', depth: 0.9 }))],
     ['a stroke point outside the nail', () => broken((data) => (data.nails.index.strokes[0].points = [0.1, 1.5]))],
     ['a stroke point that is text', () => broken((data) => (data.nails.index.strokes[0].points = ['0.1', 0.2]))],
-    ['an unknown sticker', () => broken((data) => (data.nails.thumb.stickers[0].kind = 'skull'))],
+    ['an unknown sticker', () => broken((data) => (data.nails.thumb.stickers[0].kind = 'dragon'))],
     ['a rotation of 360', () => broken((data) => (data.nails.thumb.stickers[0].rotation = 360))],
     ['two gems with one id', () => broken((data) => data.nails.ring.gems.push(data.nails.ring.gems[0]))],
     ['a sponge with a bad seed', () => broken((data) => Object.assign(data.nails.index.strokes[0], { size: 0.3, sponge: { seed: -1, opacity: 0.5 } }))],

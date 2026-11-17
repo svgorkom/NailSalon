@@ -17,14 +17,14 @@ import {
   MIN_SPONGE_SIZE,
   MIN_STICKER_SIZE,
   type Sticker,
-  STICKER_KINDS,
   type StickerKind,
   type StickerPlacement,
   type Target,
 } from '../core';
 import { GemIcon } from './GemIcon';
+import { StickerMenu } from './StickerMenu';
 import { type DrawingTool, ToolIcon } from './ToolIcon';
-import { GEM_LABELS, PALETTE, STICKER_LABELS } from './labels';
+import { GEM_LABELS, PALETTE } from './labels';
 
 interface SwatchesProps {
   readonly color: string;
@@ -171,6 +171,10 @@ function PlacedActions({ selected, minSize, maxSize, onPlace, onRemove }: Placed
 interface StickerToolsProps {
   readonly kind: StickerKind;
   readonly onKindChange: (kind: StickerKind) => void;
+  /** The colour the next sticker gets, shown on the choices. */
+  readonly color: string;
+  /** Stickers chosen last, newest first. */
+  readonly recent: readonly StickerKind[];
   /** The sticker that is selected on the nail shown on the pad. */
   readonly selected: Sticker | undefined;
   readonly canClear: boolean;
@@ -179,17 +183,11 @@ interface StickerToolsProps {
   readonly onRemoved: () => void;
 }
 
-export function StickerTools({ kind, onKindChange, selected, canClear, send, target, onRemoved }: StickerToolsProps) {
+export function StickerTools({ kind, onKindChange, color, recent, selected, canClear, send, target, onRemoved }: StickerToolsProps) {
   return (
     <fieldset className="tool">
       <legend>Stickers</legend>
-      <div className="choices">
-        {STICKER_KINDS.map((each) => (
-          <button key={each} type="button" className="choice" aria-pressed={each === kind} onClick={() => onKindChange(each)}>
-            {STICKER_LABELS[each]}
-          </button>
-        ))}
-      </div>
+      <StickerMenu kind={kind} color={color} recent={recent} onKindChange={onKindChange} />
       <p className="hint">Tik op de nagel om te plakken. Sleep een sticker om hem te verschuiven.</p>
       <PlacedActions
         selected={selected}

@@ -1,8 +1,9 @@
 import type { StickerKind } from '../core';
+import { LIBRARY_STICKER_PATHS } from './stickerLibrary';
 
 /**
- * Stickers are drawn from SVG path data, in a box from -50 to 50 around the centre. Original shapes, so no
- * asset licence applies. Filled with the nonzero rule: a subpath in the opposite direction cuts a hole.
+ * Stickers are drawn from SVG path data, in a box from -50 to 50 around the centre. The first six are original
+ * shapes; the rest come from Phosphor Icons (MIT), generated into stickerLibrary.ts. Filled with the nonzero rule: a subpath in the opposite direction cuts a hole.
  */
 
 function circle(cx: number, cy: number, r: number, sweep: 0 | 1): string {
@@ -40,4 +41,5 @@ export const STICKER_PATHS: Readonly<Record<StickerKind, string>> = {
     'M6 -4C10 -44 52 -52 48 -20C46 -4 22 2 6 -4ZM6 2C22 2 42 12 36 34C30 52 8 42 6 10Z' +
     'M-6 -4C-10 -44 -52 -52 -48 -20C-46 -4 -22 2 -6 -4ZM-6 2C-22 2 -42 12 -36 34C-30 52 -8 42 -6 10Z' +
     ellipse(0, 4, 3.5, 30, 1),
+  ...LIBRARY_STICKER_PATHS,
 };

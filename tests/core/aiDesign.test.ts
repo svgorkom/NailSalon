@@ -121,7 +121,7 @@ describe('parseAiAnswer', () => {
     ['an unknown shape', () => answer(FINGERS, (data) => (data.nails.thumb.shape = 'blob')), 'hand'],
     ['a pointed toenail', () => answer(TOES, (data) => (data.nails.bigToe.shape = 'stiletto')), 'foot'],
     ['an unknown finish', () => answer(FINGERS, (data) => (data.nails.thumb.finish = 'neon')), 'hand'],
-    ['an unknown sticker', () => answer(FINGERS, (data) => (data.nails.thumb.stickers[0].kind = 'skull')), 'hand'],
+    ['an unknown sticker', () => answer(FINGERS, (data) => (data.nails.thumb.stickers[0].kind = 'dragon')), 'hand'],
     ['a colour that is not #rrggbb', () => answer(FINGERS, (data) => (data.nails.thumb.color = 'purple')), 'hand'],
     ['a length that is text', () => answer(FINGERS, (data) => (data.nails.thumb.length = '0.5')), 'hand'],
     ['a missing message', () => answer(FINGERS, (data) => delete data.message), 'hand'],
