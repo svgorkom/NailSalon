@@ -11,6 +11,7 @@ import type { SavedState } from './saving';
 import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
+import { FIRST_STICKERS, withRecentSticker } from './recentStickers';
 import type { DrawingTool } from './ToolIcon';
 import { THEME_LABELS, THEMES, type Theme } from './theme';
 import { clampToolsWidth, loadToolsWidth, saveToolsWidth } from './toolsWidth';
@@ -77,6 +78,7 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
   const [spongeOpacity, setSpongeOpacity] = useState(0.4);
   const [toolColor, setToolColor] = useState('#c8102e');
   const [stickerKind, setStickerKind] = useState<StickerKind>('heart');
+  const [recentStickers, setRecentStickers] = useState<readonly StickerKind[]>(FIRST_STICKERS);
   const [gemKind, setGemKind] = useState<GemKind>('diamond');
   const [gemColor, setGemColor] = useState('#f7f3ee');
   const [gemClear, setGemClear] = useState(false);
@@ -332,8 +334,11 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
                       kind={stickerKind}
                       onKindChange={(kind) => {
                         setStickerKind(kind);
+                        setRecentStickers((recent) => withRecentSticker(recent, kind));
                         setSelectedItem(null);
                       }}
+                      color={toolColor}
+                      recent={recentStickers}
                       selected={padNail?.stickers.find(({ id }) => id === selectedItem)}
                       canClear={padNail !== undefined && padNail.stickers.length > 0}
                       send={send}
