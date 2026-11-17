@@ -27,6 +27,12 @@ describe('parseDesign', () => {
     expect(parseDesign(JSON.parse(JSON.stringify(design)))).toEqual(design);
   });
 
+  it('keeps sponge strokes', () => {
+    const sponge = { color: '#c8102e', size: 0.4, erase: false, points: [0.5, 0.5], sponge: { seed: 42, opacity: 0.6 } };
+    const design = apply(createDesign('Spons'), { type: 'addStroke', target: 'thumb', stroke: sponge });
+    expect(parseDesign(JSON.parse(JSON.stringify(design))).nails.thumb.strokes).toEqual([sponge]);
+  });
+
   it('trims the name', () => {
     expect(parseDesign(broken((data) => (data.name = '  Zomer  '))).name).toBe('Zomer');
   });
@@ -48,6 +54,8 @@ describe('parseDesign', () => {
     ['an unknown sticker', () => broken((data) => (data.nails.thumb.stickers[0].kind = 'skull'))],
     ['a rotation of 360', () => broken((data) => (data.nails.thumb.stickers[0].rotation = 360))],
     ['two gems with one id', () => broken((data) => data.nails.ring.gems.push(data.nails.ring.gems[0]))],
+    ['a sponge with a bad seed', () => broken((data) => Object.assign(data.nails.index.strokes[0], { size: 0.3, sponge: { seed: -1, opacity: 0.5 } }))],
+    ['a sponge that is not an object', () => broken((data) => Object.assign(data.nails.index.strokes[0], { size: 0.3, sponge: 'yes' }))],
     ['strokes that are not a list', () => broken((data) => (data.nails.index.strokes = {}))],
   ])('rejects %s', (_, make) => {
     expect(() => parseDesign(make())).toThrow(RangeError);
