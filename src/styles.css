@@ -484,11 +484,11 @@ main {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.35rem;
 }
 
-/* A tab: its picture above a short name, so all four fit on one row. */
+/* A tab: its picture above a short name, so all five fit on one row. */
 .tab {
   display: flex;
   flex-direction: column;
@@ -1516,4 +1516,131 @@ fieldset.bare {
 .designs-list .star {
   font-size: 1.15rem;
   color: var(--accent);
+}
+
+/* AI mode: a short chat with the AI above the wish box. */
+.ai {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ai-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ai-line {
+  max-width: 88%;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.8rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ai-line.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-bottom-right-radius: 0.25rem;
+}
+
+.ai-line.assistant {
+  align-self: flex-start;
+  background: var(--field);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.ai-line.error {
+  border-color: #e07a7a;
+}
+
+.ai-dots {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.ai-dots > span {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent-light);
+  animation: ai-dot 1s ease-in-out infinite;
+}
+
+.ai-dots > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.ai-dots > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ai-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-0.2rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-dots > span {
+    animation: none;
+  }
+}
+
+.ai-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ai-input {
+  font: 400 0.95rem Inter, system-ui, sans-serif;
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: 0.55rem;
+  background: var(--field);
+  resize: vertical;
+}
+
+.ai-input:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.ai-form > .primary {
+  background: linear-gradient(180deg, var(--accent-light), var(--accent));
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.ai-new {
+  align-self: flex-start;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+/* Five tabs do not fit beside their names in a narrow panel (a phone): the picture goes back above the name. */
+@container (max-width: 30rem) {
+  .tab {
+    flex-direction: column;
+    gap: 0.1rem;
+    padding-inline: 0;
+    font-size: 0.72rem;
+  }
 }

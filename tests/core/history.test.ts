@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canRedo, canUndo, createDesign, createHistory, execute, redo, undo } from '../../src/core';
+import { canRedo, canUndo, createDesign, createHistory, execute, redo, replace, undo } from '../../src/core';
 
 describe('history', () => {
   it('undoes and redoes a change', () => {
@@ -33,5 +33,15 @@ describe('history', () => {
 
     expect(undo(start)).toBe(start);
     expect(redo(start)).toBe(start);
+  });
+
+  it('puts a whole new design in place as one undo step', () => {
+    const start = createHistory(createDesign('Test'));
+    const other = createDesign('AI-ontwerp');
+    const replaced = replace(start, other);
+
+    expect(replaced.present).toBe(other);
+    expect(undo(replaced).present).toEqual(start.present);
+    expect(replace(start, createDesign('Test'))).toBe(start);
   });
 });

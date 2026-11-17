@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { createDesign, createHistory } from '../core';
+import { httpAiDesigner } from '../data/aiDesigner';
 import { httpDesignRepository } from '../data/designRepository';
 import { Editor, type Part } from './Editor';
 import { historyReducer } from './historyReducer';
@@ -9,6 +10,7 @@ import { StartScreen } from './StartScreen';
 import { loadTheme, saveTheme } from './theme';
 
 const repository = httpDesignRepository((url, init) => fetch(url, init));
+const designer = httpAiDesigner((url, init) => fetch(url, init));
 const newId = () => crypto.randomUUID();
 
 export function App() {
@@ -42,7 +44,7 @@ export function App() {
         {part === null ? (
           <StartScreen onChoose={setPart} />
         ) : (
-          <Editor key={part} part={part} history={history} dispatch={dispatch} theme={theme} onThemeChange={setTheme} skin={skin} onSkinChange={setSkin} repository={repository} newId={newId} saved={saved} onSavedChange={setSaved} />
+          <Editor key={part} part={part} history={history} dispatch={dispatch} theme={theme} onThemeChange={setTheme} skin={skin} onSkinChange={setSkin} repository={repository} designer={designer} newId={newId} saved={saved} onSavedChange={setSaved} />
         )}
       </main>
     </>

@@ -19,6 +19,12 @@ export function execute(history: History, command: Command): History {
   return { past: [...history.past, history.present], present: next, future: [] };
 }
 
+/** Puts a whole new design in place as one step that can be undone, such as one made by the AI. */
+export function replace(history: History, design: Design): History {
+  if (JSON.stringify(design) === JSON.stringify(history.present)) return history;
+  return { past: [...history.past, history.present], present: design, future: [] };
+}
+
 export function canUndo(history: History): boolean {
   return history.past.length > 0;
 }
