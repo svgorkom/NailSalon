@@ -1,7 +1,7 @@
 import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
 import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
 import { NailPaint } from '../scene/nailPaint';
-import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
+import { ColorTool, type DrawTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
 import { type Action } from './historyReducer';
 import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
@@ -31,6 +31,11 @@ function nextItemNumber(design: Design): number {
   return highest + 1;
 }
 
+/** A new seed for the pattern of a sponge stroke; the pad asks for it so that core and the scene stay free of randomness. */
+function newSpongeSeed(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+}
+
 interface EditorProps {
   readonly part: Part;
   readonly history: History;
@@ -49,8 +54,10 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
   const [selected, setSelected] = useState<Digit | null>(null);
   const [allNails, setAllNails] = useState(false);
   const [mode, setMode] = useState<Mode>('look');
-  const [eraser, setEraser] = useState(false);
+  const [drawTool, setDrawTool] = useState<DrawTool>('brush');
   const [brushSize, setBrushSize] = useState(0.06);
+  const [spongeSize, setSpongeSize] = useState(0.35);
+  const [spongeOpacity, setSpongeOpacity] = useState(0.4);
   const [toolColor, setToolColor] = useState('#c8102e');
   const [stickerKind, setStickerKind] = useState<StickerKind>('heart');
   const [gemKind, setGemKind] = useState<GemKind>('diamond');
@@ -239,25 +246,32 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
                 target={target}
                 design={design}
                 paint={paint}
-                tool={mode === 'draw' ? (eraser ? 'eraser' : 'brush') : mode}
+                tool={mode === 'draw' ? drawTool : mode}
                 color={mode === 'gem' ? gemColor : toolColor}
                 brushSize={brushSize}
+                spongeSize={spongeSize}
+                spongeOpacity={spongeOpacity}
                 stickerKind={stickerKind}
                 gemKind={gemKind}
                 gemClear={gemClear}
                 selectedItem={selectedItem}
                 onCommand={send}
                 onSelectItem={setSelectedItem}
+                newSeed={newSpongeSeed}
                 newItemId={() => `${mode === 'gem' ? 'g' : 's'}${(itemCount.current = Math.max(itemCount.current, nextItemNumber(design) - 1) + 1)}`}
               />
               <fieldset disabled={target === null} className="bare">
                 {mode !== 'gem' && <ColorTool color={toolColor} onChange={setToolColor} />}
                 {mode === 'draw' ? (
                   <DrawTools
-                    eraser={eraser}
-                    onEraserChange={setEraser}
+                    tool={drawTool}
+                    onToolChange={setDrawTool}
                     size={brushSize}
                     onSizeChange={setBrushSize}
+                    spongeSize={spongeSize}
+                    onSpongeSizeChange={setSpongeSize}
+                    spongeOpacity={spongeOpacity}
+                    onSpongeOpacityChange={setSpongeOpacity}
                     canClear={padNail !== undefined && padNail.strokes.length > 0}
                     onClear={() => target && send({ type: 'clearDrawing', target })}
                   />

@@ -1,9 +1,9 @@
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef } from 'react';
-import { type Command, type Design, type Digit, type GemKind, type Nail, nailAt, type StickerKind, type StickerPlacement, type Target, targetDigits } from '../core';
+import { type Command, type Design, type Digit, type GemKind, type Nail, nailAt, type Sponge, type StickerKind, type StickerPlacement, type Stroke, type Target, targetDigits } from '../core';
 import { type NailPaint, paintGem, TEXTURE_HEIGHT, TEXTURE_WIDTH, traceNailOutline } from '../scene/nailPaint';
-import { clamp01, movedEnough, type NailPoint, stickerAt, toNailPoint } from './pad';
+import { clamp01, movedEnough, type NailPoint, spongeStep, stickerAt, toNailPoint } from './pad';
 
-export type PadTool = 'brush' | 'eraser' | 'sticker' | 'gem';
+export type PadTool = 'brush' | 'eraser' | 'sponge' | 'sticker' | 'gem';
 
 /** Size of a new sticker and of a new gem, as a fraction of the nail width. */
 const NEW_STICKER_SIZE = 0.35;
@@ -13,7 +13,7 @@ const NEW_GEM_SIZE = 0.2;
 type Layer = 'stickers' | 'gems';
 
 type Gesture =
-  | { readonly kind: 'stroke'; readonly points: number[] }
+  | { readonly kind: 'stroke'; readonly points: number[]; readonly sponge: Sponge | undefined }
   | { readonly kind: 'drag'; readonly layer: Layer; readonly id: string; readonly offset: NailPoint; placement: StickerPlacement; moved: boolean };
 
 /** A nail with one sticker or gem moved to `placement`. */
@@ -34,6 +34,9 @@ interface NailPadProps {
   readonly color: string;
   /** Brush and eraser size, as a fraction of the nail width. */
   readonly brushSize: number;
+  /** Size of a sponge dab, as a fraction of the nail width, and the colour one dab leaves. */
+  readonly spongeSize: number;
+  readonly spongeOpacity: number;
   readonly stickerKind: StickerKind;
   readonly gemKind: GemKind;
   /** Whether new gems are clear glass. */
@@ -43,10 +46,12 @@ interface NailPadProps {
   readonly onCommand: (command: Command) => void;
   readonly onSelectItem: (id: string | null) => void;
   readonly newItemId: () => string;
+  /** A new seed (an unsigned 32-bit integer) for the pattern of a sponge stroke. */
+  readonly newSeed: () => number;
 }
 
 /** A large flat view of one nail to draw on and to place stickers and gems on. Shows the same canvas as the 3D nail, with the gems drawn over it. */
-export function NailPad({ digit, target, design, paint, tool, color, brushSize, stickerKind, gemKind, gemClear, selectedItem, onCommand, onSelectItem, newItemId }: NailPadProps) {
+export function NailPad({ digit, target, design, paint, tool, color, brushSize, spongeSize, spongeOpacity, stickerKind, gemKind, gemClear, selectedItem, onCommand, onSelectItem, newItemId, newSeed }: NailPadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const targets: readonly Digit[] = target === null ? [] : targetDigits(target);
@@ -88,7 +93,8 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
 
   const pointAt = (event: { clientX: number; clientY: number }): NailPoint => toNailPoint(event.clientX, event.clientY, canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0, width: 1, height: 1 });
 
-  const strokeOf = (points: number[]) => ({ color, size: brushSize, erase: tool === 'eraser', points });
+  const strokeOf = (points: number[], sponge: Sponge | undefined): Stroke =>
+    sponge === undefined ? { color, size: brushSize, erase: tool === 'eraser', points } : { color, size: spongeSize, erase: false, points, sponge };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (digit === null || target === null) return;
@@ -113,8 +119,9 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
       }
       return;
     }
-    gesture.current = { kind: 'stroke', points: [point.x, point.y] };
-    paint.extendStroke(design, targets, strokeOf(gesture.current.points));
+    const sponge = tool === 'sponge' ? { seed: newSeed(), opacity: spongeOpacity } : undefined;
+    gesture.current = { kind: 'stroke', points: [point.x, point.y], sponge };
+    paint.extendStroke(design, targets, strokeOf(gesture.current.points, sponge));
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -126,9 +133,9 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
       const point = pointAt(report);
       if (current.kind === 'stroke') {
         const last = { x: current.points.at(-2) ?? 0, y: current.points.at(-1) ?? 0 };
-        if (!movedEnough(last, point)) continue;
+        if (!movedEnough(last, point, current.sponge === undefined ? undefined : spongeStep(spongeSize))) continue;
         current.points.push(point.x, point.y);
-        paint.extendStroke(design, targets, strokeOf(current.points));
+        paint.extendStroke(design, targets, strokeOf(current.points, current.sponge));
       } else {
         current.placement = { ...current.placement, x: clamp01(point.x + current.offset.x), y: clamp01(point.y + current.offset.y) };
         current.moved = true;
@@ -150,7 +157,7 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
     if (current === null || target === null) return;
     // A cancelled gesture (for example a palm touch) changes nothing.
     const done = event.type === 'pointerup';
-    if (done && current.kind === 'stroke') onCommand({ type: 'addStroke', target, stroke: strokeOf(current.points) });
+    if (done && current.kind === 'stroke') onCommand({ type: 'addStroke', target, stroke: strokeOf(current.points, current.sponge) });
     if (done && current.kind === 'drag' && current.moved) {
       onCommand({ type: current.layer === 'stickers' ? 'updateSticker' : 'updateGem', target, id: current.id, placement: current.placement });
     }
