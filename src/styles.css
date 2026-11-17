@@ -1031,6 +1031,31 @@ fieldset.bare {
   white-space: nowrap;
 }
 
+/*
+ * Small or low screens (phones, also held sideways): there is no room for a fixed head and a pad that stays
+ * in view, because together they filled the whole panel and nothing could be scrolled to. The whole panel
+ * scrolls as one, so a swipe anywhere outside the drawing pad moves it, and the pad scrolls along.
+ */
+@media (max-width: 720px), (orientation: portrait), (max-height: 600px) {
+  .tools {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .tools-head,
+  .tools-body {
+    flex: none;
+  }
+
+  .tools-body {
+    overflow: visible;
+  }
+
+  .pad {
+    position: static;
+  }
+}
+
 @media (max-width: 720px), (orientation: portrait) {
   .pad-canvas {
     width: min(100%, 26dvh * 0.8);
