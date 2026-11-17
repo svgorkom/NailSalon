@@ -31,7 +31,7 @@ Per selected nail, or for all nails at once:
 - **Patterns:** French tip (colour and depth, with a curved smile line), gradient (ombré), dots, stripes; with their own colours.
 - **Stickers:** hearts, stars, flowers and similar; position, size and rotation on the nail.
 - **Gems:** 3D rhinestones and pearls glued on the nail (diamond, pearl, heart, square, drop, star); position, size, rotation, colour, and solid or clear (see-through); kind, colour and clearness can be changed after placing. The gem tools have their own colour choice, separate from the brush and sticker colour.
-- **Free drawing:** brush with size and colour, eraser.
+- **Free drawing:** brush with size and colour, eraser, and a sponge to dab colour for a gradient (size and how much colour one dab leaves; dabbing again, or with another colour, builds it up).
 - Undo and redo for every change; "clear nail" and "clear all".
 
 ## Saving and sharing

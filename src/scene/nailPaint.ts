@@ -17,9 +17,65 @@ export function traceNailOutline(ctx: CanvasRenderingContext2D): void {
   ctx.roundRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT, [half, half, cuticle, cuticle]);
 }
 
-/** Draws one stroke. An eraser stroke removes what is already on the surface. */
+/** A small, fast random generator (mulberry32). The same seed always gives the same numbers, which is what makes sponge marks repeatable. */
+function randomFrom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let mixed = Math.imul(state ^ (state >>> 15), state | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 2 ** 32;
+  };
+}
+
+/** Number of small pores in one sponge dab, and how much of the colour the soft body of the dab gets. */
+const SPONGE_PORES = 110;
+const SPONGE_BODY = 0.45;
+
+/**
+ * Draws dab number `index` of a sponge stroke: a soft round body with a speckle of pores, a different pattern for each
+ * dab. The pattern depends only on the stroke's seed and the index, so replaying a stroke gives the same marks. Dabs on
+ * top of each other add up, which is what makes a gradient.
+ */
+export function paintDab(ctx: CanvasRenderingContext2D, stroke: Stroke, index: number): void {
+  const { sponge, points } = stroke;
+  if (sponge === undefined) return;
+  const random = randomFrom(Math.imul(sponge.seed, 0x9e3779b1) ^ Math.imul(index + 1, 0x85ebca6b));
+  const radius = (stroke.size * TEXTURE_WIDTH) / 2;
+  const x = (points[index * 2] ?? 0) * TEXTURE_WIDTH;
+  const y = (points[index * 2 + 1] ?? 0) * TEXTURE_HEIGHT;
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  const body = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  body.addColorStop(0, stroke.color);
+  body.addColorStop(0.5, stroke.color);
+  body.addColorStop(1, `${stroke.color}00`);
+  ctx.globalAlpha = sponge.opacity * SPONGE_BODY;
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = stroke.color;
+  for (let pore = 0; pore < SPONGE_PORES; pore++) {
+    const angle = random() * Math.PI * 2;
+    const reach = Math.sqrt(random());
+    const size = radius * (0.025 + 0.055 * random());
+    // Pores near the edge are fainter, so the dab fades out instead of ending in a hard circle.
+    ctx.globalAlpha = sponge.opacity * (0.25 + 0.45 * random()) * (1 - reach * reach);
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(angle) * reach * radius, y + Math.sin(angle) * reach * radius, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Draws one stroke. An eraser stroke removes what is already on the surface; a sponge stroke is a series of dabs. */
 export function paintStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void {
   const { points } = stroke;
+  if (stroke.sponge !== undefined) {
+    for (let index = 0; index < points.length / 2; index++) paintDab(ctx, stroke, index);
+    return;
+  }
   const radius = (stroke.size * TEXTURE_WIDTH) / 2;
   ctx.save();
   ctx.globalCompositeOperation = stroke.erase ? 'destination-out' : 'source-over';
@@ -203,9 +259,13 @@ export class NailPaint {
 
   /** Adds the newest piece of a stroke that is still being drawn to these nails. The design does not change. */
   extendStroke(design: Design, digits: readonly Digit[], stroke: Stroke): void {
+    // A line needs its last two points; a sponge stroke only adds the newest dab, which keeps its own index in the stroke.
+    const dab = stroke.points.length / 2 - 1;
     const newest: Stroke = { ...stroke, points: stroke.points.slice(-4) };
     for (const digit of digits) {
-      paintStroke(this.surface(this.layers, digit).ctx, newest);
+      const { ctx } = this.surface(this.layers, digit);
+      if (stroke.sponge === undefined) paintStroke(ctx, newest);
+      else paintDab(ctx, stroke, dab);
       this.compose(digit, nailAt(design, digit));
       this.painted.set(digit, null);
     }

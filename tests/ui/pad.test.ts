@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Sticker } from '../../src/core';
-import { movedEnough, stickerAt, toNailPoint } from '../../src/ui/pad';
+import { movedEnough, spongeStep, stickerAt, toNailPoint } from '../../src/ui/pad';
 
 const rect = { left: 100, top: 50, width: 200, height: 250 };
 const sticker = (id: string, x: number, y: number, size: number): Sticker => ({ id, kind: 'star', color: '#ffffff', x, y, size, rotation: 0 });
@@ -25,6 +25,17 @@ describe('movedEnough', () => {
   it('counts a step along the nail as longer than the same step across it', () => {
     expect(movedEnough({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5036 })).toBe(true);
     expect(movedEnough({ x: 0.5, y: 0.5 }, { x: 0.5036, y: 0.5 })).toBe(false);
+  });
+});
+
+describe('sponge dabs', () => {
+  it('places the next dab after a fraction of the dab size, so dabs overlap', () => {
+    const step = spongeStep(0.4);
+
+    expect(step).toBeGreaterThan(0.004);
+    expect(step).toBeLessThan(0.4);
+    expect(movedEnough({ x: 0.5, y: 0.5 }, { x: 0.5 + step / 2, y: 0.5 }, step)).toBe(false);
+    expect(movedEnough({ x: 0.5, y: 0.5 }, { x: 0.5 + step, y: 0.5 }, step)).toBe(true);
   });
 });
 

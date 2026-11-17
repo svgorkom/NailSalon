@@ -63,6 +63,41 @@ describe('strokes', () => {
   });
 });
 
+describe('sponge strokes', () => {
+  const sponge: Stroke = { color: '#AA0000', size: 0.35, erase: false, points: [0.3, 0.3, 0.5, 0.5], sponge: { seed: 12345, opacity: 0.4 } };
+
+  it('keeps the sponge settings, so the marks can be replayed exactly', () => {
+    const next = apply(createDesign('Test'), { type: 'addStroke', target: 'thumb', stroke: sponge });
+
+    expect(next.nails.thumb.strokes).toEqual([{ ...sponge, color: '#aa0000' }]);
+  });
+
+  it('allows dabs bigger than a brush stroke', () => {
+    expect(() => apply(createDesign('Test'), { type: 'addStroke', target: 'thumb', stroke: { ...sponge, size: 0.6 } })).not.toThrow();
+    expect(() => apply(createDesign('Test'), { type: 'addStroke', target: 'thumb', stroke: { ...stroke, size: 0.35 } })).toThrow(RangeError);
+  });
+
+  it.each([
+    ['dab too small', { size: 0.1 }],
+    ['dab too large', { size: 0.7 }],
+    ['erasing', { erase: true }],
+    ['negative seed', { sponge: { seed: -1, opacity: 0.4 } }],
+    ['fractional seed', { sponge: { seed: 1.5, opacity: 0.4 } }],
+    ['seed over 32 bits', { sponge: { seed: 2 ** 32, opacity: 0.4 } }],
+    ['opacity too low', { sponge: { seed: 1, opacity: 0.05 } }],
+    ['opacity over 1', { sponge: { seed: 1, opacity: 1.1 } }],
+    ['NaN opacity', { sponge: { seed: 1, opacity: Number.NaN } }],
+  ])('rejects a sponge stroke with bad %s', (_name, change) => {
+    expect(() => apply(createDesign('Test'), { type: 'addStroke', target: 'thumb', stroke: { ...sponge, ...change } })).toThrow(RangeError);
+  });
+
+  it('undoes a sponge stroke like any other stroke', () => {
+    const history = execute(createHistory(createDesign('Test')), { type: 'addStroke', target: 'thumb', stroke: sponge });
+
+    expect(undo(history).present.nails.thumb.strokes).toEqual([]);
+  });
+});
+
 describe('stickers', () => {
   it('adds a sticker with a normalised colour and rotation', () => {
     const next = apply(createDesign('Test'), { type: 'addSticker', target: 'middle', sticker: { ...sticker, color: '#FF00AA', rotation: -90 } });

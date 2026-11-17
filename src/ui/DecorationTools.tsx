@@ -7,10 +7,14 @@ import {
   MAX_BRUSH_SIZE,
   MAX_FRENCH_DEPTH,
   MAX_GEM_SIZE,
+  MAX_SPONGE_OPACITY,
+  MAX_SPONGE_SIZE,
   MAX_STICKER_SIZE,
   MIN_BRUSH_SIZE,
   MIN_FRENCH_DEPTH,
   MIN_GEM_SIZE,
+  MIN_SPONGE_OPACITY,
+  MIN_SPONGE_SIZE,
   MIN_STICKER_SIZE,
   type Sticker,
   STICKER_KINDS,
@@ -48,38 +52,74 @@ export function ColorTool({ color, onChange }: SwatchesProps) {
   );
 }
 
+/** The tools of the drawing mode. */
+export type DrawTool = 'brush' | 'eraser' | 'sponge';
+
+const DRAW_TOOL_LABELS: Readonly<Record<DrawTool, string>> = { brush: '✏️ Penseel', eraser: '🧽 Gum', sponge: '☁️ Sponsje' };
+
 interface DrawToolsProps {
-  readonly eraser: boolean;
-  readonly onEraserChange: (eraser: boolean) => void;
+  readonly tool: DrawTool;
+  readonly onToolChange: (tool: DrawTool) => void;
   readonly size: number;
   readonly onSizeChange: (size: number) => void;
+  readonly spongeSize: number;
+  readonly onSpongeSizeChange: (size: number) => void;
+  readonly spongeOpacity: number;
+  readonly onSpongeOpacityChange: (opacity: number) => void;
   readonly canClear: boolean;
   readonly onClear: () => void;
 }
 
-export function DrawTools({ eraser, onEraserChange, size, onSizeChange, canClear, onClear }: DrawToolsProps) {
+export function DrawTools({ tool, onToolChange, size, onSizeChange, spongeSize, onSpongeSizeChange, spongeOpacity, onSpongeOpacityChange, canClear, onClear }: DrawToolsProps) {
   return (
     <fieldset className="tool">
       <legend>Tekenen</legend>
       <div className="choices">
-        <button type="button" className="choice" aria-pressed={!eraser} onClick={() => onEraserChange(false)}>
-          ✏️ Penseel
-        </button>
-        <button type="button" className="choice" aria-pressed={eraser} onClick={() => onEraserChange(true)}>
-          🧽 Gum
-        </button>
+        {(Object.keys(DRAW_TOOL_LABELS) as DrawTool[]).map((each) => (
+          <button key={each} type="button" className="choice" aria-pressed={each === tool} onClick={() => onToolChange(each)}>
+            {DRAW_TOOL_LABELS[each]}
+          </button>
+        ))}
       </div>
-      <label className="slider">
-        Dikte
-        <input
-          type="range"
-          min={Math.round(MIN_BRUSH_SIZE * 100)}
-          max={Math.round(MAX_BRUSH_SIZE * 100)}
-          step={1}
-          value={Math.round(size * 100)}
-          onChange={(event) => onSizeChange(Number(event.target.value) / 100)}
-        />
-      </label>
+      {tool === 'sponge' ? (
+        <>
+          <label className="slider">
+            Grootte
+            <input
+              type="range"
+              min={Math.round(MIN_SPONGE_SIZE * 100)}
+              max={Math.round(MAX_SPONGE_SIZE * 100)}
+              step={1}
+              value={Math.round(spongeSize * 100)}
+              onChange={(event) => onSpongeSizeChange(Number(event.target.value) / 100)}
+            />
+          </label>
+          <label className="slider">
+            Hoeveel kleur
+            <input
+              type="range"
+              min={Math.round(MIN_SPONGE_OPACITY * 100)}
+              max={Math.round(MAX_SPONGE_OPACITY * 100)}
+              step={5}
+              value={Math.round(spongeOpacity * 100)}
+              onChange={(event) => onSpongeOpacityChange(Number(event.target.value) / 100)}
+            />
+          </label>
+          <p className="hint">Tik of sleep over de nagel. Dep vaker op dezelfde plek voor meer kleur. Dep met twee kleuren over elkaar voor een kleurverloop.</p>
+        </>
+      ) : (
+        <label className="slider">
+          Dikte
+          <input
+            type="range"
+            min={Math.round(MIN_BRUSH_SIZE * 100)}
+            max={Math.round(MAX_BRUSH_SIZE * 100)}
+            step={1}
+            value={Math.round(size * 100)}
+            onChange={(event) => onSizeChange(Number(event.target.value) / 100)}
+          />
+        </label>
+      )}
       <button type="button" disabled={!canClear} onClick={onClear}>
         Wis tekening
       </button>

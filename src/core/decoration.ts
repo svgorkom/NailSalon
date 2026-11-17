@@ -8,12 +8,35 @@ import { type HexColor, isHexColor } from './design';
 export const MIN_BRUSH_SIZE = 0.01;
 export const MAX_BRUSH_SIZE = 0.2;
 
-/** A brush or eraser stroke. `points` is flat: x0, y0, x1, y1, ... */
+/** A sponge dab is much bigger than a brush stroke. */
+export const MIN_SPONGE_SIZE = 0.15;
+export const MAX_SPONGE_SIZE = 0.6;
+
+/** How much colour one dab leaves: 1 is almost solid, low values need several dabs to build up. */
+export const MIN_SPONGE_OPACITY = 0.1;
+export const MAX_SPONGE_OPACITY = 1;
+
+/** The upper bound (exclusive) of a sponge seed: seeds are unsigned 32-bit integers. */
+export const SPONGE_SEED_LIMIT = 2 ** 32;
+
+/** What turns a stroke into a series of sponge dabs. */
+export interface Sponge {
+  /** Makes the pattern of the dabs repeatable, so undo, redo and loading show exactly the same sponge marks. */
+  readonly seed: number;
+  /** Colour left by one dab, from MIN_SPONGE_OPACITY to MAX_SPONGE_OPACITY. */
+  readonly opacity: number;
+}
+
+/**
+ * A brush, eraser or sponge stroke. `points` is flat: x0, y0, x1, y1, ...
+ * With `sponge` set the stroke is not a line: each point is the centre of one dab, and `size` is the size of a dab.
+ */
 export interface Stroke {
   readonly color: HexColor;
   readonly size: number;
   readonly erase: boolean;
   readonly points: readonly number[];
+  readonly sponge?: Sponge;
 }
 
 export const STICKER_KINDS = ['heart', 'star', 'flower', 'sparkle', 'moon', 'butterfly'] as const;
@@ -84,13 +107,26 @@ function isUnit(value: number): boolean {
 /** Throws RangeError unless the stroke is complete and inside the nail. */
 export function assertStroke(stroke: Stroke): void {
   if (!isHexColor(stroke.color)) throw new RangeError('Stroke colour must be #rrggbb.');
-  if (!Number.isFinite(stroke.size) || stroke.size < MIN_BRUSH_SIZE || stroke.size > MAX_BRUSH_SIZE) {
-    throw new RangeError(`Brush size must be between ${MIN_BRUSH_SIZE} and ${MAX_BRUSH_SIZE}.`);
+  const { sponge } = stroke;
+  const [min, max, what] = sponge === undefined ? [MIN_BRUSH_SIZE, MAX_BRUSH_SIZE, 'Brush'] : [MIN_SPONGE_SIZE, MAX_SPONGE_SIZE, 'Sponge'];
+  if (!Number.isFinite(stroke.size) || stroke.size < min || stroke.size > max) {
+    throw new RangeError(`${what} size must be between ${min} and ${max}.`);
   }
+  if (sponge !== undefined) assertSponge(stroke, sponge);
   if (stroke.points.length < 2 || stroke.points.length % 2 !== 0) {
     throw new RangeError('A stroke needs at least one point, given as x and y.');
   }
   if (!stroke.points.every(isUnit)) throw new RangeError('Stroke points must be between 0 and 1.');
+}
+
+function assertSponge(stroke: Stroke, sponge: Sponge): void {
+  if (stroke.erase) throw new RangeError('A sponge cannot erase.');
+  if (!Number.isInteger(sponge.seed) || sponge.seed < 0 || sponge.seed >= SPONGE_SEED_LIMIT) {
+    throw new RangeError('Sponge seed must be an unsigned 32-bit integer.');
+  }
+  if (!Number.isFinite(sponge.opacity) || sponge.opacity < MIN_SPONGE_OPACITY || sponge.opacity > MAX_SPONGE_OPACITY) {
+    throw new RangeError(`Sponge opacity must be between ${MIN_SPONGE_OPACITY} and ${MAX_SPONGE_OPACITY}.`);
+  }
 }
 
 /** Throws RangeError unless the sticker is valid. */
