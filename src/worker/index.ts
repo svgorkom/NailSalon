@@ -3,6 +3,7 @@
  * (`run_worker_first` in wrangler.jsonc). Every API request must carry a valid Cloudflare Access token.
  */
 import { AccessConfigError, AccessError, cachedKeySource, verifyAccessToken } from './access';
+import { type AiLike, type AiUsage, d1AiUsage, DEFAULT_AI_MODEL, handleAiDesign } from './ai';
 import { handleApi, problem } from './api';
 import { type D1Like, d1Store, type DesignStore } from './store';
 
@@ -10,6 +11,9 @@ interface Env {
   readonly DB: D1Like;
   readonly ACCESS_TEAM_DOMAIN: string;
   readonly ACCESS_AUD: string;
+  readonly AI: AiLike;
+  /** Optional: another Workers AI model for the AI mode. */
+  readonly AI_MODEL?: string;
 }
 
 const keys = cachedKeySource(async (url) => (await fetch(url)).json(), () => Date.now());
@@ -25,6 +29,16 @@ function storeFor(db: D1Like): DesignStore {
   return store;
 }
 
+const usages = new WeakMap<D1Like, AiUsage>();
+function usageFor(db: D1Like): AiUsage {
+  let usage = usages.get(db);
+  if (usage === undefined) {
+    usage = d1AiUsage(db);
+    usages.set(db, usage);
+  }
+  return usage;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     let owner: string;
@@ -34,6 +48,9 @@ export default {
       if (error instanceof AccessError) return problem(401, error.message);
       if (error instanceof AccessConfigError) return problem(503, error.message);
       throw error;
+    }
+    if (new URL(request.url).pathname === '/api/ai/design') {
+      return handleAiDesign(request, { ai: env.AI, model: env.AI_MODEL ?? DEFAULT_AI_MODEL, usage: usageFor(env.DB), owner, now: Date.now(), newId: () => crypto.randomUUID() });
     }
     return handleApi(request, { store: storeFor(env.DB), owner, now: Date.now() });
   },

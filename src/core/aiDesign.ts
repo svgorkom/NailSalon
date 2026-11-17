@@ -16,6 +16,18 @@ export const AI_MAX_DECORATIONS = 5;
 /** Longest explanation the AI may give with its design. */
 export const AI_MAX_MESSAGE_LENGTH = 300;
 
+/** Longest wish the user can type. */
+export const AI_MAX_WISH_LENGTH = 300;
+
+/** Earlier chat messages sent along, so a wish like "make it darker" knows what "it" is. */
+export const AI_MAX_HISTORY = 10;
+
+/** One earlier message of the chat: a wish of the user or the explanation the AI gave. */
+export interface AiChatMessage {
+  readonly role: 'user' | 'assistant';
+  readonly content: string;
+}
+
 /** What the AI gives back: the design and one or two sentences about it. */
 export interface AiAnswer {
   readonly design: Design;
