@@ -23,6 +23,7 @@ import {
   type Target,
 } from '../core';
 import { GemIcon } from './GemIcon';
+import { type DrawingTool, ToolIcon } from './ToolIcon';
 import { GEM_LABELS, PALETTE, STICKER_LABELS } from './labels';
 
 interface SwatchesProps {
@@ -52,14 +53,13 @@ export function ColorTool({ color, onChange }: SwatchesProps) {
   );
 }
 
-/** The tools of the drawing mode. */
-export type DrawTool = 'brush' | 'eraser' | 'sponge';
-
-const DRAW_TOOL_LABELS: Readonly<Record<DrawTool, string>> = { brush: '✏️ Penseel', eraser: '🧽 Gum', sponge: '☁️ Sponsje' };
+const DRAW_TOOL_LABELS: Readonly<Record<DrawingTool, string>> = { brush: 'Penseel', eraser: 'Gum', sponge: 'Sponsje' };
 
 interface DrawToolsProps {
-  readonly tool: DrawTool;
-  readonly onToolChange: (tool: DrawTool) => void;
+  readonly tool: DrawingTool;
+  /** The paint colour, shown on the brush and the sponge. */
+  readonly color: string;
+  readonly onToolChange: (tool: DrawingTool) => void;
   readonly size: number;
   readonly onSizeChange: (size: number) => void;
   readonly spongeSize: number;
@@ -70,13 +70,14 @@ interface DrawToolsProps {
   readonly onClear: () => void;
 }
 
-export function DrawTools({ tool, onToolChange, size, onSizeChange, spongeSize, onSpongeSizeChange, spongeOpacity, onSpongeOpacityChange, canClear, onClear }: DrawToolsProps) {
+export function DrawTools({ tool, color, onToolChange, size, onSizeChange, spongeSize, onSpongeSizeChange, spongeOpacity, onSpongeOpacityChange, canClear, onClear }: DrawToolsProps) {
   return (
     <fieldset className="tool">
       <legend>Tekenen</legend>
-      <div className="choices">
-        {(Object.keys(DRAW_TOOL_LABELS) as DrawTool[]).map((each) => (
-          <button key={each} type="button" className="choice" aria-pressed={each === tool} onClick={() => onToolChange(each)}>
+      <div className="draw-tools">
+        {(Object.keys(DRAW_TOOL_LABELS) as DrawingTool[]).map((each) => (
+          <button key={each} type="button" className="choice draw-tool" aria-pressed={each === tool} onClick={() => onToolChange(each)}>
+            <ToolIcon tool={each} color={color} className="tool-icon" />
             {DRAW_TOOL_LABELS[each]}
           </button>
         ))}

@@ -442,6 +442,25 @@ main {
   min-height: 0;
   overflow: hidden;
   border-width: 0 0 0 1px;
+  /* The tools adapt to the width of the panel, which the user can drag, not to the window. */
+  container-type: inline-size;
+}
+
+/* A narrow panel: smaller tab names and helper buttons, so nothing runs over the edge. */
+@container (max-width: 17.5rem) {
+  .tab {
+    padding-inline: 0;
+    font-size: 0.62rem;
+  }
+
+  .history button {
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .draw-tool {
+    font-size: 0.75rem;
+  }
 }
 
 /* Mode, target and undo stay in view; only the body scrolls. */
@@ -465,18 +484,38 @@ main {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.35rem;
 }
 
-.tabs .choice {
-  padding: 0.55rem 0.25rem;
+/* A tab: its picture above a short name, so all four fit on one row. */
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.45rem 0.15rem 0.4rem;
+  font-size: 0.8rem;
   white-space: nowrap;
+}
+
+.tab-icon {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .target {
   justify-content: space-between;
   flex-wrap: wrap;
+  row-gap: 0.35rem;
+  min-height: 1.75rem;
+}
+
+/* Undo and redo are helpers, so smaller than the main buttons. */
+.history button {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
 }
 
 .toggle {
@@ -632,10 +671,12 @@ input[type='checkbox'] {
   accent-color: var(--accent);
 }
 
+/* Even columns, so a second row of colours lines up under the first. */
 .swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.25rem, 1fr));
+  justify-items: center;
+  gap: 0.5rem 0.35rem;
 }
 
 /* Even columns, so the buttons line up however wide the panel is. */
@@ -745,11 +786,40 @@ fieldset.tool .slider {
   }
 
   .tools-head {
-    padding: 0.6rem 0.75rem;
+    gap: 0.45rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .designs-menu {
+    gap: 0.35rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .designs-menu button,
+  .design-name {
+    padding-block: 0.35rem;
+  }
+
+  /* On a phone the tab picture sits beside its name, so the tabs take one low row. */
+  .tab {
+    flex-direction: row;
+    justify-content: center;
+    gap: 0.3rem;
+    padding-block: 0.4rem;
+  }
+
+  .tab-icon {
+    font-size: 1rem;
   }
 
   .tools-body {
     padding: 0.6rem 0.75rem 0.75rem;
+  }
+
+  .pad {
+    top: -0.6rem;
+    margin: -0.6rem -0.75rem 0;
+    padding: 0.6rem 0.75rem 0.5rem;
   }
 
   .title {
@@ -764,18 +834,20 @@ fieldset.tool .slider {
 
 /* Drawing pad: the same canvas as the nail in 3D, shown flat. */
 .pad {
-  /* Stays in view while the tools below it scroll. */
+  /* Stays in view while the tools below it scroll; full width and the colour of the panel, so nothing peeks past it. */
   position: sticky;
-  top: 0;
+  top: -0.75rem;
   z-index: 1;
-  background: var(--page);
-  border-radius: 0.75rem;
+  margin: -0.75rem -1rem 0;
+  padding: 0.75rem 1rem 0.5rem;
+  background: linear-gradient(var(--panel-bottom), var(--panel-bottom)), var(--page);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
 }
 
 .pad-canvas {
   display: block;
-  /* At most 40% of the screen high (the texture is 512 × 640), so the tools below stay reachable. */
-  width: min(100%, 40dvh * 0.8);
+  /* At most a third of the screen high (the texture is 512 × 640), so the tools below stay reachable. */
+  width: min(100%, 33dvh * 0.8);
   height: auto;
   margin: 0 auto;
   border: 1px solid rgba(var(--accent-rgb), 0.5);
@@ -785,8 +857,100 @@ fieldset.tool .slider {
   cursor: crosshair;
 }
 
-.pad-canvas[data-tool='sticker'] {
+.pad-canvas[data-tool='sticker'],
+.pad-canvas[data-tool='gem'] {
   cursor: pointer;
+}
+
+/* The brush, eraser and sponge draw their own pointer (.pad-cursor). */
+.pad-canvas[data-tool='brush'],
+.pad-canvas[data-tool='eraser'],
+.pad-canvas[data-tool='sponge'] {
+  cursor: none;
+}
+
+/* The tool that follows the pointer on the pad: the tool itself, and a ring as big as its stroke. */
+.pad-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.pad-cursor[data-shown] {
+  visibility: visible;
+}
+
+.pad-cursor-ring {
+  position: absolute;
+  width: max(var(--ring, 0px), 6px);
+  height: max(var(--ring, 0px), 6px);
+  border-radius: 50%;
+  border: 1.5px solid var(--tool-color);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+  transform: translate(-50%, -50%);
+}
+
+.pad-cursor[data-tool='eraser'] .pad-cursor-ring {
+  border: 1.5px dashed #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.pad-cursor[data-tool='sponge'] .pad-cursor-ring {
+  border-style: dotted;
+  border-width: 2px;
+}
+
+/* The working end of the picture (48 × 48, end at 4, 44) sits on the pointer. */
+.pad-cursor-icon {
+  position: absolute;
+  left: -4px;
+  top: -44px;
+  filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.45));
+  transform-origin: 4px 44px;
+  transition: transform 90ms ease;
+}
+
+/* Pressing: the brush and eraser lean into the nail, the sponge squashes. */
+.pad-cursor[data-pressed] .pad-cursor-icon {
+  transform: rotate(-8deg) scale(0.94);
+}
+
+.pad-cursor[data-tool='sponge'][data-pressed] .pad-cursor-icon {
+  transform: scale(1.08, 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pad-cursor-icon {
+    transition: none;
+  }
+}
+
+/* The brush, eraser and sponge buttons: the picture above the name. */
+.draw-tools {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.draw-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.25rem 0.45rem;
+  font-size: 0.85rem;
+}
+
+.tool-icon {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .pad-hint {
@@ -833,6 +997,29 @@ fieldset.bare {
   border-radius: 50%;
   background: none;
   cursor: pointer;
+  overflow: hidden;
+  appearance: none;
+}
+
+/* The browser draws a square inside the round field; make the colour fill the circle. */
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+.color-input::-moz-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+/* The own colour sits among the swatches with a small rainbow ring, so it reads as "pick any colour". */
+.swatches .color-input {
+  border: 2px solid transparent;
+  background: conic-gradient(#ff6b6b, #ffd43b, #69db7c, #4dabf7, #9775fa, #f783ac, #ff6b6b) border-box;
 }
 
 .visually-hidden {
@@ -846,7 +1033,7 @@ fieldset.bare {
 
 @media (max-width: 720px), (orientation: portrait) {
   .pad-canvas {
-    width: min(100%, 30dvh * 0.8);
+    width: min(100%, 26dvh * 0.8);
   }
 }
 
@@ -1191,11 +1378,25 @@ fieldset.bare {
   color: var(--accent-light);
 }
 
-/* Saving and opening designs (DesignsMenu). */
+/* Saving and opening designs (DesignsMenu), set apart from the tools below by a thin line. */
 .designs-menu {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px dashed rgba(var(--accent-rgb), 0.3);
+}
+
+/* Both buttons as wide as their text, on one row; in a narrow panel they go under each other. */
+.designs-menu > .row {
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.designs-menu > .row > button {
+  flex: 1 1 auto;
+  padding-inline: 0.6rem;
+  white-space: nowrap;
 }
 
 .design-name {

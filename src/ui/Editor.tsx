@@ -2,13 +2,14 @@ import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPoin
 import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
 import { NailPaint } from '../scene/nailPaint';
 import type { DesignRepository } from '../data/designRepository';
-import { ColorTool, type DrawTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
+import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
 import { DesignsMenu } from './DesignsMenu';
 import { type Action } from './historyReducer';
 import type { SavedState } from './saving';
 import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
+import type { DrawingTool } from './ToolIcon';
 import { THEME_LABELS, THEMES, type Theme } from './theme';
 import { clampToolsWidth, loadToolsWidth, saveToolsWidth } from './toolsWidth';
 
@@ -19,7 +20,12 @@ export type Part = 'hand' | 'foot';
 
 type Mode = 'look' | 'draw' | 'sticker' | 'gem';
 
-const MODE_LABELS: Readonly<Record<Mode, string>> = { look: '💅 Lak', draw: '✏️ Tekenen', sticker: '⭐ Stickers', gem: '💎 Steentjes' };
+const MODE_LABELS: Readonly<Record<Mode, { readonly icon: string; readonly text: string }>> = {
+  look: { icon: '💅', text: 'Lak' },
+  draw: { icon: '🖌️', text: 'Tekenen' },
+  sticker: { icon: '⭐', text: 'Stickers' },
+  gem: { icon: '💎', text: 'Steentjes' },
+};
 
 /** A French tip when it is turned on: white, over about a quarter of the nail. */
 const NEW_FRENCH: FrenchTip = { color: '#f7f3ee', depth: 0.25 };
@@ -61,7 +67,7 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
   const [selected, setSelected] = useState<Digit | null>(null);
   const [allNails, setAllNails] = useState(false);
   const [mode, setMode] = useState<Mode>('look');
-  const [drawTool, setDrawTool] = useState<DrawTool>('brush');
+  const [drawTool, setDrawTool] = useState<DrawingTool>('brush');
   const [brushSize, setBrushSize] = useState(0.06);
   const [spongeSize, setSpongeSize] = useState(0.35);
   const [spongeOpacity, setSpongeOpacity] = useState(0.4);
@@ -179,8 +185,11 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
               Wat wil je doen?
             </span>
             {(Object.keys(MODE_LABELS) as Mode[]).map((name) => (
-              <button key={name} type="button" className="choice" aria-pressed={name === mode} onClick={() => setMode(name)}>
-                {MODE_LABELS[name]}
+              <button key={name} type="button" className="choice tab" aria-pressed={name === mode} onClick={() => setMode(name)}>
+                <span className="tab-icon" aria-hidden="true">
+                  {MODE_LABELS[name].icon}
+                </span>
+                {MODE_LABELS[name].text}
               </button>
             ))}
           </div>
@@ -190,10 +199,10 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
             </p>
             <label className="toggle">
               <input type="checkbox" role="switch" className="switch" checked={allNails} onChange={(event) => setAllNails(event.target.checked)} />
-              Alle nagels
+              Allemaal
             </label>
           </div>
-          <div className="row">
+          <div className="row history">
             <button type="button" className="grow" onClick={() => dispatch({ type: 'undo' })} disabled={!canUndo(history)}>
               ↶ Ongedaan
             </button>
@@ -282,33 +291,39 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
                 newItemId={() => `${mode === 'gem' ? 'g' : 's'}${(itemCount.current = Math.max(itemCount.current, nextItemNumber(design) - 1) + 1)}`}
               />
               <fieldset disabled={target === null} className="bare">
-                {mode !== 'gem' && <ColorTool color={toolColor} onChange={setToolColor} />}
                 {mode === 'draw' ? (
-                  <DrawTools
-                    tool={drawTool}
-                    onToolChange={setDrawTool}
-                    size={brushSize}
-                    onSizeChange={setBrushSize}
-                    spongeSize={spongeSize}
-                    onSpongeSizeChange={setSpongeSize}
-                    spongeOpacity={spongeOpacity}
-                    onSpongeOpacityChange={setSpongeOpacity}
-                    canClear={padNail !== undefined && padNail.strokes.length > 0}
-                    onClear={() => target && send({ type: 'clearDrawing', target })}
-                  />
+                  <>
+                    <DrawTools
+                      tool={drawTool}
+                      color={toolColor}
+                      onToolChange={setDrawTool}
+                      size={brushSize}
+                      onSizeChange={setBrushSize}
+                      spongeSize={spongeSize}
+                      onSpongeSizeChange={setSpongeSize}
+                      spongeOpacity={spongeOpacity}
+                      onSpongeOpacityChange={setSpongeOpacity}
+                      canClear={padNail !== undefined && padNail.strokes.length > 0}
+                      onClear={() => target && send({ type: 'clearDrawing', target })}
+                    />
+                    <ColorTool color={toolColor} onChange={setToolColor} />
+                  </>
                 ) : mode === 'sticker' ? (
-                  <StickerTools
-                    kind={stickerKind}
-                    onKindChange={(kind) => {
-                      setStickerKind(kind);
-                      setSelectedItem(null);
-                    }}
-                    selected={padNail?.stickers.find(({ id }) => id === selectedItem)}
-                    canClear={padNail !== undefined && padNail.stickers.length > 0}
-                    send={send}
-                    target={target}
-                    onRemoved={() => setSelectedItem(null)}
-                  />
+                  <>
+                    <ColorTool color={toolColor} onChange={setToolColor} />
+                    <StickerTools
+                      kind={stickerKind}
+                      onKindChange={(kind) => {
+                        setStickerKind(kind);
+                        setSelectedItem(null);
+                      }}
+                      selected={padNail?.stickers.find(({ id }) => id === selectedItem)}
+                      canClear={padNail !== undefined && padNail.stickers.length > 0}
+                      send={send}
+                      target={target}
+                      onRemoved={() => setSelectedItem(null)}
+                    />
+                  </>
                 ) : (
                   <GemTools
                     kind={gemKind}
