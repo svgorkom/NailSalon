@@ -30,6 +30,8 @@ export function errorText(error: unknown): string {
       return 'Je bent uitgelogd. Herlaad de pagina en log opnieuw in.';
     case 'tooLarge':
       return 'Dit ontwerp is te groot om op te slaan. Gum een paar tekeningen uit.';
+    case 'notConfigured':
+      return 'Opslaan is nog niet klaar. Vraag je vader of moeder.';
     case 'failed':
       return 'Dat lukte niet. Probeer het nog eens.';
   }

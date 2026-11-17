@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { type AccessKey, AccessError, cachedKeySource, verifyAccessToken } from '../../src/worker/access';
+import { AccessConfigError, type AccessKey, AccessError, cachedKeySource, verifyAccessToken } from '../../src/worker/access';
 
 const config = { teamDomain: 'https://team.cloudflareaccess.com', audience: 'aud-tag' };
 const NOW = 1_800_000_000_000;
@@ -56,7 +56,7 @@ describe('verifyAccessToken', () => {
   });
 
   it('refuses everything while the audience is not configured', async () => {
-    await expect(verifyAccessToken(await token(valid), { ...config, audience: '' }, keys, NOW)).rejects.toThrow('not configured');
+    await expect(verifyAccessToken(await token(valid), { ...config, audience: '' }, keys, NOW)).rejects.toThrow(AccessConfigError);
   });
 });
 

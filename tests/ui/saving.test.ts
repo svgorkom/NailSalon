@@ -15,6 +15,7 @@ describe('saving', () => {
     expect(errorText(new RepositoryError('unavailable', ''))).toContain('online');
     expect(errorText(new RepositoryError('signedOut', ''))).toContain('Herlaad');
     expect(errorText(new RepositoryError('tooLarge', ''))).toContain('te groot');
+    expect(errorText(new RepositoryError('notConfigured', ''))).toContain('niet klaar');
     expect(errorText(new Error('x'))).toContain('Probeer');
   });
 });

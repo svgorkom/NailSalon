@@ -46,6 +46,7 @@ describe('httpDesignRepository', () => {
     expect(await kindOf(answering(jsonResponse(401, { error: 'x' })).list())).toBe('signedOut');
     expect(await kindOf(answering(new Response(null, { status: 302, headers: { location: '/login' } })).list())).toBe('signedOut');
     expect(await kindOf(answering(jsonResponse(413, { error: 'x' })).save(ID, createDesign('a'), false))).toBe('tooLarge');
+    expect(await kindOf(answering(jsonResponse(503, { error: 'x' })).list())).toBe('notConfigured');
     expect(await kindOf(answering(jsonResponse(500, { error: 'x' })).list())).toBe('failed');
     expect(await kindOf(answering(jsonResponse(200, { id: ID, design: { name: 'kapot' } })).open(ID))).toBe('failed');
     expect(await kindOf(httpDesignRepository(async () => Promise.reject(new TypeError('offline'))).list())).toBe('failed');
