@@ -1,6 +1,7 @@
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef } from 'react';
 import { type Command, type Design, type Digit, type GemKind, type Nail, nailAt, type Sponge, type StickerKind, type StickerPlacement, type Stroke, type Target, targetDigits } from '../core';
 import { type NailPaint, paintGem, TEXTURE_HEIGHT, TEXTURE_WIDTH, traceNailOutline } from '../scene/nailPaint';
+import { ToolIcon } from './ToolIcon';
 import { clamp01, movedEnough, type NailPoint, spongeStep, stickerAt, toNailPoint } from './pad';
 
 export type PadTool = 'brush' | 'eraser' | 'sponge' | 'sticker' | 'gem';
@@ -54,6 +55,8 @@ interface NailPadProps {
 export function NailPad({ digit, target, design, paint, tool, color, brushSize, spongeSize, spongeOpacity, stickerKind, gemKind, gemClear, selectedItem, onCommand, onSelectItem, newItemId, newSeed }: NailPadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<Gesture | null>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const drawingTool = tool === 'brush' || tool === 'eraser' || tool === 'sponge' ? tool : null;
   const targets: readonly Digit[] = target === null ? [] : targetDigits(target);
 
   const draw = useCallback(() => {
@@ -96,8 +99,23 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
   const strokeOf = (points: number[], sponge: Sponge | undefined): Stroke =>
     sponge === undefined ? { color, size: brushSize, erase: tool === 'eraser', points } : { color, size: spongeSize, erase: false, points, sponge };
 
+  // The brush, eraser or sponge follows the pointer, with a ring as big as the stroke. Moved through the DOM, not React state, so moving does not re-render.
+  const moveCursor = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const cursor = cursorRef.current;
+    const pad = cursor?.parentElement;
+    if (!cursor || !pad || drawingTool === null) return;
+    const padRect = pad.getBoundingClientRect();
+    const canvasWidth = event.currentTarget.getBoundingClientRect().width;
+    cursor.style.transform = `translate(${event.clientX - padRect.left}px, ${event.clientY - padRect.top}px)`;
+    cursor.style.setProperty('--ring', `${(drawingTool === 'sponge' ? spongeSize : brushSize) * canvasWidth}px`);
+  };
+  const showCursor = (shown: boolean) => cursorRef.current?.toggleAttribute('data-shown', shown);
+  const pressCursor = (pressed: boolean) => cursorRef.current?.toggleAttribute('data-pressed', pressed);
+
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    moveCursor(event);
     if (digit === null || target === null) return;
+    pressCursor(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointAt(event);
     if (tool === 'sticker' || tool === 'gem') {
@@ -125,6 +143,7 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    moveCursor(event);
     const current = gesture.current;
     if (current === null || digit === null) return;
     // Fast pointers report several positions per event; using them all keeps curves smooth.
@@ -152,6 +171,7 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
   };
 
   const onPointerEnd = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    pressCursor(false);
     const current = gesture.current;
     gesture.current = null;
     if (current === null || target === null) return;
@@ -178,7 +198,18 @@ export function NailPad({ digit, target, design, paint, tool, color, brushSize, 
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
+        onPointerEnter={(event) => {
+          moveCursor(event);
+          showCursor(true);
+        }}
+        onPointerLeave={() => showCursor(false)}
       />
+      {drawingTool !== null && digit !== null && (
+        <div ref={cursorRef} className="pad-cursor" data-tool={drawingTool} style={{ ['--tool-color' as string]: color }}>
+          <span className="pad-cursor-ring" />
+          <ToolIcon tool={drawingTool} color={color} className="pad-cursor-icon" />
+        </div>
+      )}
       {digit === null && <p className="pad-hint">Kies eerst een nagel.</p>}
     </div>
   );
