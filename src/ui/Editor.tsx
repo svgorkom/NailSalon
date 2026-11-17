@@ -1,7 +1,9 @@
 import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
 import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
 import { NailPaint } from '../scene/nailPaint';
+import type { AiDesigner } from '../data/aiDesigner';
 import type { DesignRepository } from '../data/designRepository';
+import { AiTools, type ChatLine } from './AiTools';
 import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
 import { DesignsMenu } from './DesignsMenu';
 import { type Action } from './historyReducer';
@@ -18,13 +20,14 @@ const ModelScene = lazy(() => import('../scene/ModelScene').then((module) => ({ 
 /** Which part of the body is being painted. */
 export type Part = 'hand' | 'foot';
 
-type Mode = 'look' | 'draw' | 'sticker' | 'gem';
+type Mode = 'look' | 'draw' | 'sticker' | 'gem' | 'ai';
 
 const MODE_LABELS: Readonly<Record<Mode, { readonly icon: string; readonly text: string }>> = {
   look: { icon: '💅', text: 'Lak' },
   draw: { icon: '🖌️', text: 'Tekenen' },
   sticker: { icon: '⭐', text: 'Stickers' },
   gem: { icon: '💎', text: 'Steentjes' },
+  ai: { icon: '✨', text: 'AI' },
 };
 
 /** A French tip when it is turned on: white, over about a quarter of the nail. */
@@ -54,12 +57,13 @@ interface EditorProps {
   readonly skin: SkinToneId;
   readonly onSkinChange: (skin: SkinToneId) => void;
   readonly repository: DesignRepository;
+  readonly designer: AiDesigner;
   readonly newId: () => string;
   readonly saved: SavedState;
   readonly onSavedChange: (saved: SavedState) => void;
 }
 
-export function Editor({ part, history, dispatch, theme, onThemeChange, skin, onSkinChange, repository, newId, saved, onSavedChange }: EditorProps) {
+export function Editor({ part, history, dispatch, theme, onThemeChange, skin, onSkinChange, repository, designer, newId, saved, onSavedChange }: EditorProps) {
   const digits: readonly Digit[] = part === 'hand' ? FINGERS : TOES;
   const allTarget = part === 'hand' ? 'fingers' : 'toes';
   const shapes = part === 'hand' ? NAIL_SHAPES : TOE_SHAPES;
@@ -77,6 +81,7 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
   const [gemColor, setGemColor] = useState('#f7f3ee');
   const [gemClear, setGemClear] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [chat, setChat] = useState<readonly ChatLine[]>([]);
   const [paint] = useState(() => new NailPaint());
   const itemCount = useRef(0);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -269,6 +274,18 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
                 <FrenchTool french={frenchShown} fallback={NEW_FRENCH} onChange={(french) => target && send({ type: 'setFrench', target, french })} />
               </fieldset>
             </>
+          ) : mode === 'ai' ? (
+            <AiTools
+              part={part}
+              design={design}
+              designer={designer}
+              chat={chat}
+              onChatChange={setChat}
+              onDesign={(made) => {
+                dispatch({ type: 'replace', design: made });
+                setSelectedItem(null);
+              }}
+            />
           ) : (
             <>
               <NailPad
