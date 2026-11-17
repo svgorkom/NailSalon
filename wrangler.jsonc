@@ -19,7 +19,7 @@
     // The API checks the Access token itself (src/worker/access.ts), so it never trusts a request that skipped Access.
     "ACCESS_TEAM_DOMAIN": "https://shiny-frog-e9d5.cloudflareaccess.com",
     // Zero Trust > Access > Applications > NailSalon > Overview: "Application Audience (AUD) Tag".
-    "ACCESS_AUD": ""
+    "ACCESS_AUD": "62ff3311aec6ec866915551e8348cebe059a6ad3c96f3e8fb25d84fd022e9c00"
   },
   // The site lives on the workers.dev address, behind Cloudflare Access.
   "workers_dev": true,

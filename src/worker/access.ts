@@ -18,9 +18,12 @@ export type KeySource = (teamDomain: string) => Promise<readonly AccessKey[]>;
 
 export class AccessError extends Error {}
 
-/** Returns the e-mail address of the signed-in user, or throws AccessError. `now` is in milliseconds. */
+/** The Worker itself is not set up (no team domain or audience): a server problem, not a login problem. */
+export class AccessConfigError extends Error {}
+
+/** Returns the e-mail address of the signed-in user, or throws AccessError (login problem) or AccessConfigError (server not set up). `now` is in milliseconds. */
 export async function verifyAccessToken(token: string | null, config: AccessConfig, keys: KeySource, now: number): Promise<string> {
-  if (config.teamDomain === '' || config.audience === '') throw new AccessError('Access is not configured.');
+  if (config.teamDomain === '' || config.audience === '') throw new AccessConfigError('Access is not configured.');
   if (token === null || token === '') throw new AccessError('No Access token.');
   const parts = token.split('.');
   const [head, body, signature] = parts;

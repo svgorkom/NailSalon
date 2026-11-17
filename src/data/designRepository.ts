@@ -18,9 +18,10 @@ export interface SavedDesign {
  * - `unavailable`: there is no server, for example when the app runs locally on the PC;
  * - `signedOut`: the Access login has expired; reloading the page signs in again;
  * - `tooLarge`: the design (usually the drawing) is too big to save;
+ * - `notConfigured`: the server is not set up yet (the Access audience is missing), so nobody can save;
  * - `failed`: anything else, such as no internet.
  */
-export type RepositoryErrorKind = 'unavailable' | 'signedOut' | 'tooLarge' | 'failed';
+export type RepositoryErrorKind = 'unavailable' | 'signedOut' | 'tooLarge' | 'notConfigured' | 'failed';
 
 export class RepositoryError extends Error {
   readonly kind: RepositoryErrorKind;
@@ -55,6 +56,7 @@ export function httpDesignRepository(fetchFn: Fetch): DesignRepository {
     if (response.type === 'opaqueredirect' || response.status === 401 || (response.status >= 300 && response.status < 400)) {
       throw new RepositoryError('signedOut', 'Not signed in.');
     }
+    if (response.status === 503 && (response.headers.get('content-type') ?? '').includes('application/json')) throw new RepositoryError('notConfigured', 'Server is not set up.');
     if (response.status === 413) throw new RepositoryError('tooLarge', 'Design is too large.');
     if (response.status === 204) return response;
     // Without the Worker (locally) the address gives the app page or a 404, not JSON.
