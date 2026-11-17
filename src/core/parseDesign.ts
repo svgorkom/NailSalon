@@ -1,5 +1,5 @@
 import { assertFrenchTip, assertGem, assertSticker, assertStroke, type FrenchTip, type Gem, GEM_KINDS, type Sticker, STICKER_KINDS, type Stroke } from './decoration';
-import { type Design, type Finger, FINGERS, FINISHES, MAX_LENGTH, MAX_NAME_LENGTH, MIN_LENGTH, type Nail, NAIL_SHAPES } from './design';
+import { type Design, type Digit, type Finger, FINGERS, FINISHES, isToe, MAX_LENGTH, MAX_NAME_LENGTH, MIN_LENGTH, type Nail, NAIL_SHAPES, type Toe, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from './design';
 
 type Fields = Readonly<Record<string, unknown>>;
 
@@ -12,16 +12,22 @@ export function parseDesign(value: unknown): Design {
   const name = text(fields.name, 'Design name').trim();
   if (name.length === 0 || name.length > MAX_NAME_LENGTH) throw new RangeError(`Design name must be 1 to ${MAX_NAME_LENGTH} characters.`);
   const nails = record(fields.nails, 'Nails');
-  const parsed = Object.fromEntries(FINGERS.map((finger) => [finger, parseNail(nails[finger], finger)])) as Record<Finger, Nail>;
-  return { name, nails: parsed };
+  const toenails = record(fields.toenails, 'Toenails');
+  return {
+    name,
+    nails: Object.fromEntries(FINGERS.map((finger) => [finger, parseNail(nails[finger], finger)])) as Record<Finger, Nail>,
+    toenails: Object.fromEntries(TOES.map((toe) => [toe, parseNail(toenails[toe], toe)])) as Record<Toe, Nail>,
+  };
 }
 
-function parseNail(value: unknown, finger: Finger): Nail {
-  const fields = record(value, `Nail ${finger}`);
-  const shape = oneOf(fields.shape, NAIL_SHAPES, 'Nail shape');
+function parseNail(value: unknown, digit: Digit): Nail {
+  const fields = record(value, `Nail ${digit}`);
+  const toe = isToe(digit);
+  const shape = oneOf(fields.shape, toe ? TOE_SHAPES : NAIL_SHAPES, 'Nail shape');
   const finish = oneOf(fields.finish, FINISHES, 'Finish');
   const length = number(fields.length, 'Length');
-  if (length < MIN_LENGTH || length > MAX_LENGTH) throw new RangeError(`Length must be between ${MIN_LENGTH} and ${MAX_LENGTH}.`);
+  const maxLength = toe ? TOE_MAX_LENGTH : MAX_LENGTH;
+  if (length < MIN_LENGTH || length > maxLength) throw new RangeError(`Length must be between ${MIN_LENGTH} and ${maxLength}.`);
   const color = colour(fields.color, 'Nail colour');
   const french = fields.french === null ? null : parseFrench(fields.french);
   const strokes = list(fields.strokes, 'Strokes').map(parseStroke);

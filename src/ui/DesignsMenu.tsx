@@ -8,14 +8,16 @@ interface DesignsMenuProps {
   readonly repository: DesignRepository;
   /** Makes the id of a design that is saved for the first time. */
   readonly newId: () => string;
+  /** The saved copy of the open design. */
+  readonly saved: SavedState;
+  readonly onSavedChange: (saved: SavedState) => void;
   readonly onRename: (name: string) => void;
   /** Replaces the design in the editor; undo starts afresh. */
   readonly onLoad: (design: Design) => void;
 }
 
 /** Name field, save button and the "Mijn ontwerpen" window to open, star and delete saved designs. */
-export function DesignsMenu({ design, repository, newId, onRename, onLoad }: DesignsMenuProps) {
-  const [saved, setSaved] = useState<SavedState>(() => startState(design));
+export function DesignsMenu({ design, repository, newId, saved, onSavedChange: setSaved, onRename, onLoad }: DesignsMenuProps) {
   const [name, setName] = useState(design.name);
   const [nameOf, setNameOf] = useState(design.name);
   const [message, setMessage] = useState('');

@@ -18,3 +18,8 @@ Thumbs.db
 bin/
 obj/
 .idea/
+
+# Foot model tooling: intermediate files and the MPFB checkout
+tools/foot-model/work/
+tools/foot-model/mpfb2/
+__pycache__/

@@ -1,4 +1,4 @@
-import { type Design, FINGERS } from '../core';
+import type { Design } from '../core';
 import { RepositoryError } from '../data/designRepository';
 
 /** The design that is open, as it was last saved, opened or started. */
@@ -33,13 +33,4 @@ export function errorText(error: unknown): string {
     case 'failed':
       return 'Dat lukte niet. Probeer het nog eens.';
   }
-}
-
-/**
- * The highest number in the sticker and gem ids of a design (`s3`, `g12`), so new items in an opened
- * design get ids that are not taken yet.
- */
-export function highestItemNumber(design: Design): number {
-  const numbers = FINGERS.flatMap((finger) => [...design.nails[finger].stickers, ...design.nails[finger].gems]).map(({ id }) => Number(/^[sg](\d+)$/.exec(id)?.[1] ?? 0));
-  return Math.max(0, ...numbers);
 }

@@ -1117,6 +1117,80 @@ fieldset.bare {
   }
 }
 
+/* ---------- Start screen and way back ---------- */
+
+.app-header {
+  position: relative;
+}
+
+.back {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  height: 100%;
+  padding: 1rem;
+  overflow: auto;
+  touch-action: auto;
+}
+
+.start-title {
+  margin: 0;
+  font-family: var(--title-font);
+  font-weight: var(--title-weight);
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  letter-spacing: 0.06em;
+  color: var(--accent-light);
+  text-align: center;
+}
+
+.start-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: min(15rem, 42vw);
+  min-width: 9rem;
+  padding: 1rem 1rem 1.2rem;
+  border-radius: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.start-card:hover {
+  border-color: var(--accent-light);
+}
+
+.start-image {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: contain;
+}
+
+.start-name {
+  font-family: var(--title-font);
+  font-weight: var(--title-weight);
+  font-size: 1.8rem;
+  color: var(--accent-light);
+}
+
 /* Saving and opening designs (DesignsMenu). */
 .designs-menu {
   display: flex;

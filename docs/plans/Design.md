@@ -62,6 +62,7 @@ Each phase on its own branch; the owner merges.
 ## Open items
 
 - The hand model is in place (see *Hand model*). A scan-quality skin (photo-based textures, veins, palm lines) and a left hand are not there yet.
+- The foot model is in place (see *Foot model*) but the app does not load it yet: `core` only knows five fingers, there is no hand/foot switch, and `findNailAnchors` looks for the hand's anchor names. Toenails probably need a shorter maximum length and fewer shapes.
 - Stickers and free drawing were built before the hand model. The flat drawing pad still uses the placeholder outline from `traceNailOutline`; the 3D nail takes the shape from core. The UV convention (top of the texture is the free edge) stays.
 - Strokes make the design grow. The API accepts 1.5 MB per design; if drawings get near that, simplify points.
 - Collections ("Zomer", "Verjaardag") and duplicating a design are not built yet.
@@ -78,3 +79,20 @@ Each phase on its own branch; the owner merges.
 
 When the model is regenerated, keep these names and axes. In Blender's glTF export the local axes of an empty are the Blender axes `(x, y, z) → (x, z, −y)`, so the anchor frame there is `(across, −up, along)`.
 
+## Foot model
+
+`public/assets/foot/foot.glb` (about 2.2 MB; same conventions as the hand: metres, glTF Y-up, right foot; mirror with `scale.x = -1` for a left foot). The ankle joint is in the origin, the toes point along +y and the top of the foot faces +z, so the foot is seen from above like the hand is seen from its back.
+
+- `Foot`: one skinned mesh (about 18,500 vertices: the MPFB base mesh at subdivision level 2) with a single material `Skin`: colour, normal and roughness textures (2048² JPEG). Built from the same MPFB body settings as the hand (female, Caucasian, age 0.5, muscle and weight 0.4), so proportions and skin match. The average colour of the colour texture is the hand texture's (`TEXTURE_AVERAGE` in `src/ui/skin.ts`), so `skinTint` works unchanged. The skin is procedural, with fine lines at the toe joints, redder toe tips and pink nail areas; there are no sole ridges or veins.
+- `FootRig`: 16 bones (`lowerleg02.R`, `foot.R`, `toe1-1.R`, `toe1-2.R` and `toeN-1..3.R` for N = 2..5, in one glTF skin). The foot is in a fixed pose, pointed 60° (plantar flexion), with about 10 cm of shin: the toes point up the screen and the shin runs towards the viewer, instead of the shin standing straight up out of the screen as it does in a standing foot.
+- `NailBed_BigToe|SecondToe|ThirdToe|FourthToe|LittleToe`: one empty per toe, a child of the last toe bone (`toe1-2.R`, `toeN-3.R`). Same local axes and `extras` as the finger anchors (x across the nail, y from cuticle to tip, z up; `nailWidth`, `bedLength`, `gx`, `gy`, `gxx`, `gxy`, `gyy`), plus `toe`. Nail widths are 14.9 mm (big toe), 9.6, 7.4, 7.3 and 6.8 mm (little toe). The surface is fitted to the skin over the nail footprint as the upper envelope and the anchor is lifted until no skin comes above the underside of the plate (0.1 mm under the surface the app draws): the skin no longer pokes through the nail, and the nail floats at most about 1 mm above the skin in the middle of the big toe.
+- Nails are not in the file; they are generated from the anchors, as on the hand.
+- The foot is made with `tools/foot-model` (MPFB in `bpy`, see its README). When regenerating, keep these names and axes; the exporter detail of the hand section applies to the anchors too.
+
+### Foot in the app
+
+- The first screen asks "Wat ga je lakken?": a card for the hand and one for the foot. "Kies opnieuw" in the header goes back; the design is kept.
+- One design holds both sets: `nails` (fingers) and `toenails` (toes). Choosing hand or foot only changes the view.
+- `Target` is a digit (finger or toe), `'fingers'` or `'toes'`. Toenails allow `TOE_SHAPES` (round, oval, square, soft square) and at most `TOE_MAX_LENGTH`; `apply` throws `RangeError` otherwise. The maximum of 0.3 and the shapes are a first guess: adjust after trying.
+- `ModelScene` shows the hand or the foot (`SETUPS` in `src/scene/ModelScene.tsx`: scale, camera target, pick distance).
+- No left/right switch for now; the left foot comes later by mirroring.

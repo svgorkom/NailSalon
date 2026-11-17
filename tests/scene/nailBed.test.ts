@@ -1,5 +1,6 @@
 import { Object3D } from 'three';
 import { describe, expect, it } from 'vitest';
+import { FINGERS, TOES } from '../../src/core';
 import { findNailAnchors, NAIL_ANCHOR_NAMES, readNailBed } from '../../src/scene/nailBed';
 
 const EXTRAS = { nailWidth: 0.008, bedLength: 0.012, gx: 0.1, gy: 0.2, gxx: -30, gxy: 5, gyy: -2 };
@@ -34,12 +35,18 @@ describe('findNailAnchors', () => {
   };
 
   it('finds the anchor of every finger', () => {
-    const anchors = findNailAnchors(hand(Object.values(NAIL_ANCHOR_NAMES)));
+    const anchors = findNailAnchors(hand(Object.values(NAIL_ANCHOR_NAMES)), FINGERS);
     expect(anchors.little.node.name).toBe('NailBed_Pinky');
     expect(anchors.thumb.bed.width).toBe(0.008);
   });
 
+  it('finds the anchor of every toe, and asks a hand model for no toes', () => {
+    const anchors = findNailAnchors(hand(['NailBed_BigToe', 'NailBed_SecondToe', 'NailBed_ThirdToe', 'NailBed_FourthToe', 'NailBed_LittleToe']), TOES);
+    expect(anchors.littleToe.node.name).toBe('NailBed_LittleToe');
+    expect(() => findNailAnchors(hand(['NailBed_Thumb']), TOES)).toThrow(/NailBed_BigToe/);
+  });
+
   it('throws when an anchor is missing', () => {
-    expect(() => findNailAnchors(hand(['NailBed_Thumb']))).toThrow(/NailBed_Index/);
+    expect(() => findNailAnchors(hand(['NailBed_Thumb']), FINGERS)).toThrow(/NailBed_Index/);
   });
 });

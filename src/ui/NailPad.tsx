@@ -1,5 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef } from 'react';
-import { type Command, type Design, type Finger, type GemKind, type Nail, type StickerKind, type StickerPlacement, type Target } from '../core';
+import { type Command, type Design, type Digit, type GemKind, type Nail, nailAt, type StickerKind, type StickerPlacement, type Target, targetDigits } from '../core';
 import { type NailPaint, paintGem, TEXTURE_HEIGHT, TEXTURE_WIDTH, traceNailOutline } from '../scene/nailPaint';
 import { clamp01, movedEnough, type NailPoint, stickerAt, toNailPoint } from './pad';
 
@@ -25,7 +25,7 @@ function withPlacement(nail: Nail, layer: Layer, id: string, placement: StickerP
 
 interface NailPadProps {
   /** The nail shown on the pad; null until a nail is chosen. */
-  readonly finger: Finger | null;
+  readonly digit: Digit | null;
   /** What changes apply to: the nail shown, or all nails. */
   readonly target: Target | null;
   readonly design: Design;
@@ -46,24 +46,24 @@ interface NailPadProps {
 }
 
 /** A large flat view of one nail to draw on and to place stickers and gems on. Shows the same canvas as the 3D nail, with the gems drawn over it. */
-export function NailPad({ finger, target, design, paint, tool, color, brushSize, stickerKind, gemKind, gemClear, selectedItem, onCommand, onSelectItem, newItemId }: NailPadProps) {
+export function NailPad({ digit, target, design, paint, tool, color, brushSize, stickerKind, gemKind, gemClear, selectedItem, onCommand, onSelectItem, newItemId }: NailPadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<Gesture | null>(null);
-  const targets: readonly Finger[] = target === null ? [] : target === 'all' ? (Object.keys(design.nails) as Finger[]) : [target];
+  const targets: readonly Digit[] = target === null ? [] : targetDigits(target);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx || finger === null) return;
+    if (!canvas || !ctx || digit === null) return;
     ctx.clearRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT);
-    ctx.drawImage(paint.canvas(finger), 0, 0);
+    ctx.drawImage(paint.canvas(digit), 0, 0);
     ctx.lineWidth = 4;
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
     traceNailOutline(ctx);
     ctx.stroke();
     const current = gesture.current;
     const dragged = current?.kind === 'drag' ? current : null;
-    const nail = dragged === null ? design.nails[finger] : withPlacement(design.nails[finger], dragged.layer, dragged.id, dragged.placement);
+    const nail = dragged === null ? nailAt(design, digit) : withPlacement(nailAt(design, digit), dragged.layer, dragged.id, dragged.placement);
     for (const gem of nail.gems) paintGem(ctx, gem);
     const items = tool === 'sticker' ? nail.stickers : tool === 'gem' ? nail.gems : [];
     const item = items.find(({ id }) => id === selectedItem);
@@ -77,26 +77,26 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
       ctx.stroke();
       ctx.restore();
     }
-  }, [finger, design, paint, tool, selectedItem]);
+  }, [digit, design, paint, tool, selectedItem]);
 
   useEffect(() => {
     draw();
     return paint.subscribe((changed) => {
-      if (changed === finger) draw();
+      if (changed === digit) draw();
     });
-  }, [draw, paint, finger]);
+  }, [draw, paint, digit]);
 
   const pointAt = (event: { clientX: number; clientY: number }): NailPoint => toNailPoint(event.clientX, event.clientY, canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0, width: 1, height: 1 });
 
   const strokeOf = (points: number[]) => ({ color, size: brushSize, erase: tool === 'eraser', points });
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (finger === null || target === null) return;
+    if (digit === null || target === null) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointAt(event);
     if (tool === 'sticker' || tool === 'gem') {
       const layer: Layer = tool === 'sticker' ? 'stickers' : 'gems';
-      const hit = stickerAt<StickerPlacement & { id: string }>(design.nails[finger][layer], point);
+      const hit = stickerAt<StickerPlacement & { id: string }>(nailAt(design, digit)[layer], point);
       if (hit === undefined) {
         const id = newItemId();
         const placement = { x: point.x, y: point.y, rotation: 0 };
@@ -119,7 +119,7 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const current = gesture.current;
-    if (current === null || finger === null) return;
+    if (current === null || digit === null) return;
     // Fast pointers report several positions per event; using them all keeps curves smooth.
     const reports = event.nativeEvent.getCoalescedEvents?.() ?? [];
     for (const report of reports.length > 0 ? reports : [event.nativeEvent]) {
@@ -135,7 +135,7 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
         // A sticker is part of the texture, so the 3D nail follows it; a gem moves on the pad and lands on the nail when let go.
         if (current.layer === 'stickers') {
           for (const each of targets) {
-            const nail = design.nails[each];
+            const nail = nailAt(design, each);
             if (nail.stickers.some(({ id }) => id === current.id)) paint.preview(each, withPlacement(nail, 'stickers', current.id, current.placement));
           }
         }
@@ -172,7 +172,7 @@ export function NailPad({ finger, target, design, paint, tool, color, brushSize,
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
       />
-      {finger === null && <p className="pad-hint">Kies eerst een nagel.</p>}
+      {digit === null && <p className="pad-hint">Kies eerst een nagel.</p>}
     </div>
   );
 }
