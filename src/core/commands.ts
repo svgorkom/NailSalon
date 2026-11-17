@@ -16,7 +16,7 @@ import {
   type StickerPlacement,
   type Stroke,
 } from './decoration';
-import { type Design, type Digit, type Finish, FINGERS, type HexColor, isHexColor, isToe, MAX_LENGTH, MIN_LENGTH, type Nail, type NailShape, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from './design';
+import { type Design, type Digit, type Finish, FINGERS, type HexColor, isHexColor, isToe, MAX_LENGTH, MAX_NAME_LENGTH, MIN_LENGTH, type Nail, type NailShape, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from './design';
 
 /** Which nails a command applies to: one finger or toe, all fingernails or all toenails. */
 export type Target = Digit | 'fingers' | 'toes';
@@ -51,7 +51,7 @@ export function apply(design: Design, command: Command): Design {
   switch (command.type) {
     case 'rename': {
       const name = command.name.trim();
-      if (name.length === 0) throw new RangeError('Name must not be empty.');
+      if (name.length === 0 || name.length > MAX_NAME_LENGTH) throw new RangeError(`Name must be 1 to ${MAX_NAME_LENGTH} characters.`);
       return { ...design, name };
     }
     case 'setShape':

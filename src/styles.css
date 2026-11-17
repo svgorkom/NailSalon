@@ -1190,3 +1190,104 @@ fieldset.bare {
   font-size: 1.8rem;
   color: var(--accent-light);
 }
+
+/* Saving and opening designs (DesignsMenu). */
+.designs-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.design-name {
+  font: 600 1rem Inter, system-ui, sans-serif;
+  color: var(--text);
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: 0.55rem;
+  background: rgba(var(--accent-rgb), 0.08);
+  min-width: 0;
+}
+
+.save-status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.designs-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100dvh - 2rem));
+  padding: 1rem;
+  border-radius: 1rem;
+  color: var(--text);
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.designs-dialog[open] {
+  display: flex;
+}
+
+.designs-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.designs-dialog h2 {
+  margin: 0;
+  padding: 0;
+  font-family: var(--title-font);
+  font-weight: var(--title-weight);
+  color: var(--accent-light);
+}
+
+.designs-dialog p {
+  margin: 0;
+}
+
+.designs-dialog .warning {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.designs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.designs-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 0.65rem;
+}
+
+.designs-list li[aria-current='true'] {
+  border-color: var(--accent);
+}
+
+.designs-list li > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.designs-list small {
+  opacity: 0.7;
+}
+
+.designs-list button {
+  padding: 0.4rem 0.65rem;
+}
+
+.designs-list .star {
+  font-size: 1.15rem;
+  color: var(--accent);
+}

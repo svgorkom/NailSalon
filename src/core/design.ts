@@ -25,6 +25,9 @@ export type Finish = (typeof FINISHES)[number];
 export const MIN_LENGTH = 0;
 export const MAX_LENGTH = 1;
 
+/** Longest name a design may have. */
+export const MAX_NAME_LENGTH = 60;
+
 /** Toenails are short and not pointed: fewer shapes and a lower maximum length than fingernails. */
 export const TOE_SHAPES: readonly NailShape[] = ['round', 'oval', 'square', 'squoval'];
 export const TOE_MAX_LENGTH = 0.3;

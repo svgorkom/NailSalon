@@ -11,7 +11,7 @@ How NailSalon meets [Requirements.md](Requirements.md), and the phases to build 
 | 3D | Three.js via React Three Fiber + drei | The standard for 3D on the web; R3F keeps the scene declarative. |
 | Build | Vite | Fast dev server and build. |
 | Tests | Vitest (logic, components with jsdom), Playwright (browser smoke) | |
-| Auth and data | Firebase Authentication (Google), Firestore, Storage | Google sign-in without our own server; free at this scale. |
+| Auth and data | Cloudflare Access (login), a small Worker API with Cloudflare D1 (designs) | One login for site and data; free at this scale (D1 free plan: 500 MB per database, 100,000 rows written a day). |
 | Hosting | Local (`npm run dev`) until phase 7, then Cloudflare Workers static assets (Git integration) | Cloudflare builds and deploys on every push to `main`; no tokens or CI job. |
 
 Blazor (as in Triominos) was rejected: free drawing updates the nail texture on every pointer move, which would mean C#↔JS interop per event.
@@ -23,14 +23,15 @@ ui  →  scene  →  core
  └──→  data   →  core
 ```
 
-`core` never imports React, Three.js, Firebase or the DOM.
+`core` never imports React, Three.js, Firebase or the DOM. `src/worker` (the server) uses only `core`.
 
 - **`src/core`**: the design model and all rules. A `Design` has five `Nail`s (thumb to little finger); a nail has shape, length, base colour, finish, French tip, stickers, gems and drawing strokes. Changes are pure functions (`(design, command) → design`); `History` gives undo and redo. Validation (ranges, ids) lives here.
 - **`src/scene`**: React Three Fiber components. The hand is a GLB model lit by an HDRI environment. Nails are generated from shape and length (`core` gives the outline; the scene extrudes and curves it) and anchored to the fingertips, so every shape and length works without extra models. Materials use `MeshPhysicalMaterial` (clearcoat for gloss, metalness/roughness for chrome and matte, a sparkle map for glitter).
 - **Nail texture**: per nail, a 2D canvas combines base colour, the French tip (from the free edge down to its depth, ending in a smile line that is deepest at the sides), the drawing layer (eraser strokes only remove drawing, never the base colour), then stickers, clipped to the nail outline (other patterns go between base colour and drawing, like the French tip). The canvas is the live texture of the nail and the same canvas is shown on the drawing pad. Positions are fractions of the nail (x across, y from free edge to cuticle), sizes fractions of its width. A stroke that is being drawn goes straight onto the canvas; only the finished stroke becomes a command, so one stroke is one undo step. A sponge stroke is a stroke with `sponge: { seed, opacity }`: each point is one dab (a soft body with a speckle of pores) and `size` is the dab size. The pattern of dab *n* comes only from the seed and *n* (a small seeded generator in `nailPaint.ts`), so undo, redo and loading replay exactly the same marks; the seed is made in the UI (`crypto.getRandomValues`) and passed in, never inside core or the scene. The pad adds a dab after the pointer moved a fraction of the dab size, so dabs overlap and blend into a gradient. Sticker shapes are SVG paths in code (original, no asset licence).
 - **Gems**: 3D meshes standing on the nail, not part of the texture. A gem uses the same texture position and size as a sticker; `surfaceFrame` in `src/scene/nailGeometry.ts` turns it into a point and normal on the nail plate with the same formula as the mesh, so the gem sits where the pad shows it. Shapes are made in code (`src/scene/gems.ts`): a faceted lathe for the diamond, a flattened half sphere for the pearl, a bevelled extruded heart, and bevelled extrusions of the flat outlines in `src/scene/gemOutlines.ts` (square, drop, star), which the pad and the kind buttons draw too; one geometry per kind is shared. Solid gems are faceted with clearcoat and iridescence; clear gems use transmission (glass), tinted by their colour. The pad draws gems flat over the texture; while a gem is dragged only the pad follows, and the 3D gem moves when it is let go.
 - **`src/ui`**: screens (sign-in, Mijn ontwerpen, editor), the tool bar and the drawing pad. Sends commands to `core`; holds no rules.
-- **`src/data`**: `DesignRepository` interface with a Firebase implementation and an in-memory one for tests. Firestore `users/{uid}/designs/{designId}`; drawing strokes are vector data inside the design document (replayed onto the nail texture), so undo and redo are exact; PNG files in Storage are only for exported images, under `users/{uid}/designs/{designId}/`. Security rules allow only the two family accounts (owner and daughter).
+- **`src/data`**: `DesignRepository` interface with an HTTP implementation that calls the Worker API on the same address. Drawing strokes are vector data inside the design (replayed onto the nail texture), so a design is plain JSON. Loaded designs are checked with `parseDesign` in core. Exported images are never stored; the user saves them on the device.
+- **`src/worker`**: the Cloudflare Worker. Static files are served by Workers static assets; only `/api/*` runs the Worker (`run_worker_first`). Every request must carry a valid Cloudflare Access token (`Cf-Access-Jwt-Assertion`, RS256, checked against the team's certs, issuer and the application's AUD tag); the e-mail address in it is the owner of the designs, so each account sees only its own. Table `designs (owner, id, name, favorite, updated_at, data)` in D1, created on first use. API: `GET /api/designs`, `GET|PUT|PATCH|DELETE /api/designs/{id}`; `PUT` checks the design with `parseDesign` and accepts at most 1.5 MB (D1 allows 2 MB per row).
 
 ## Performance
 
@@ -42,8 +43,8 @@ ui  →  scene  →  core
 ## Running and hosting
 
 - Phases 1-6: the app runs locally on a Windows PC: F5 in Visual Studio runs `host/NailSalon.Host` (ASP.NET Core serving the Vite build in `host/wwwroot`), as in TriominosTheGame; `npm run dev` gives hot reload. CI lints, tests and builds, including the host.
-- Sign-in uses `signInWithPopup`; `localhost` is a Firebase authorized domain by default. The redirect flow is unreliable on domains other than Firebase Hosting, so popup stays the choice after deployment.
-- Phase 7: Cloudflare Workers with static assets, connected to the GitHub repository (Workers Builds). Production branch `main`; build command `npm run build`; deploy command `npx wrangler deploy`; `wrangler.jsonc` serves `host/wwwroot` with SPA fallback to `index.html`. The `workers.dev` address is added to Firebase *authorized domains*.
+- Locally there is no Worker: saving and opening show that they only work in the online app; the editor itself works.
+- Phase 7: Cloudflare Workers with static assets, connected to the GitHub repository (Workers Builds). Production branch `main`; build command `npm run build`; deploy command `npx wrangler deploy`; `wrangler.jsonc` serves `host/wwwroot` with SPA fallback to `index.html`, runs `src/worker` for `/api/*` and binds the D1 database `nailsalon` (created by the first deploy). The variable `ACCESS_AUD` holds the Access application's AUD tag; while it is empty the API refuses every request.
 - Access control: the whole site (the `workers.dev` address) sits behind Cloudflare Access (free plan), with one Allow policy for the owner's and the daughter's accounts (Google login; one-time PIN by e-mail as a fallback), set on the Worker's *Access* tab. The app needs no sign-in code for this. Preview URLs stay off. A custom domain is not used for now.
 
 ## Phases
@@ -54,17 +55,17 @@ Each phase on its own branch; the owner merges.
 2. **Hand and nails**: realistic hand model, generated nails, shapes and lengths, selecting a nail, camera controls.
 3. **Looks**: colours, finishes, patterns, stickers, undo/redo.
 4. **Free drawing**: drawing pad, brush, eraser, live texture.
-5. **Sign-in and cloud**: Firebase, Google sign-in, saving, Mijn ontwerpen.
+5. **Sign-in and cloud**: saving in D1 behind Cloudflare Access, Mijn ontwerpen.
 6. **Export and share**: PNG export, Web Share API.
-7. **Deploy**: Cloudflare Workers with Access, workers.dev address in Firebase.
+7. **Deploy**: Cloudflare Workers with Access.
 
 ## Open items
 
 - The hand model is in place (see *Hand model*). A scan-quality skin (photo-based textures, veins, palm lines) and a left hand are not there yet.
 - The foot model is in place (see *Foot model*) but the app does not load it yet: `core` only knows five fingers, there is no hand/foot switch, and `findNailAnchors` looks for the hand's anchor names. Toenails probably need a shorter maximum length and fewer shapes.
 - Stickers and free drawing were built before the hand model. The flat drawing pad still uses the placeholder outline from `traceNailOutline`; the 3D nail takes the shape from core. The UV convention (top of the texture is the free edge) stays.
-- Strokes make the design document grow. Check against the Firestore 1 MB document limit in phase 5; if needed, simplify points or store the drawing separately.
-- A Firebase project is to be created by the owner before phase 5.
+- Strokes make the design grow. The API accepts 1.5 MB per design; if drawings get near that, simplify points.
+- Collections ("Zomer", "Verjaardag") and duplicating a design are not built yet.
 
 ## Hand model
 
