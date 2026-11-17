@@ -21,4 +21,11 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // The Worker only uses core: no UI, 3D or browser data code ends up on the server.
+    files: ['src/worker/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['react', 'react-*', 'three', 'three/*', '@react-three/*', '../ui/*', '../scene/*', '../data/*'] }],
+    },
+  },
 );

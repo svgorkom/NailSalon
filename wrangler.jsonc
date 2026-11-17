@@ -3,11 +3,23 @@
   "name": "nailsalon",
   "compatibility_date": "2026-11-16",
   "observability": { "enabled": true },
+  // The designs API (src/worker); everything else is static files.
+  "main": "src/worker/index.ts",
   "assets": {
     // The Vite build writes here (see vite.config.ts).
     "directory": "./host/wwwroot",
     // Unknown paths get index.html, like MapFallbackToFile in host/Program.cs.
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // The API goes to the Worker, never to the SPA fallback.
+    "run_worker_first": ["/api/*"]
+  },
+  // Saved designs. No database_id: the first deploy creates the database and keeps it linked.
+  "d1_databases": [{ "binding": "DB", "database_name": "nailsalon" }],
+  "vars": {
+    // The API checks the Access token itself (src/worker/access.ts), so it never trusts a request that skipped Access.
+    "ACCESS_TEAM_DOMAIN": "https://shiny-frog-e9d5.cloudflareaccess.com",
+    // Zero Trust > Access > Applications > NailSalon > Overview: "Application Audience (AUD) Tag".
+    "ACCESS_AUD": ""
   },
   // The site lives on the workers.dev address, behind Cloudflare Access.
   "workers_dev": true,

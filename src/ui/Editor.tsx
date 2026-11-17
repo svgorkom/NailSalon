@@ -1,8 +1,11 @@
 import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
 import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
 import { NailPaint } from '../scene/nailPaint';
+import type { DesignRepository } from '../data/designRepository';
 import { ColorTool, DrawTools, FrenchTool, GemTools, StickerTools } from './DecorationTools';
+import { DesignsMenu } from './DesignsMenu';
 import { type Action } from './historyReducer';
+import type { SavedState } from './saving';
 import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
@@ -39,9 +42,13 @@ interface EditorProps {
   readonly onThemeChange: (theme: Theme) => void;
   readonly skin: SkinToneId;
   readonly onSkinChange: (skin: SkinToneId) => void;
+  readonly repository: DesignRepository;
+  readonly newId: () => string;
+  readonly saved: SavedState;
+  readonly onSavedChange: (saved: SavedState) => void;
 }
 
-export function Editor({ part, history, dispatch, theme, onThemeChange, skin, onSkinChange }: EditorProps) {
+export function Editor({ part, history, dispatch, theme, onThemeChange, skin, onSkinChange, repository, newId, saved, onSavedChange }: EditorProps) {
   const digits: readonly Digit[] = part === 'hand' ? FINGERS : TOES;
   const allTarget = part === 'hand' ? 'fingers' : 'toes';
   const shapes = part === 'hand' ? NAIL_SHAPES : TOE_SHAPES;
@@ -146,6 +153,20 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
       />
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="tools-head">
+          <DesignsMenu
+            design={design}
+            repository={repository}
+            newId={newId}
+            saved={saved}
+            onSavedChange={onSavedChange}
+            onRename={(name) => send({ type: 'rename', name })}
+            onLoad={(loaded) => {
+              dispatch({ type: 'load', design: loaded });
+              itemCount.current = 0;
+              setSelected(null);
+              setSelectedItem(null);
+            }}
+          />
           <div className="tabs" role="group" aria-labelledby={modeLabelId}>
             <span id={modeLabelId} className="visually-hidden">
               Wat wil je doen?
