@@ -58,6 +58,7 @@ function newSpongeSeed(): number {
 export interface SalonRound {
   readonly customer: CustomerEntry;
   readonly wish: string;
+  readonly checklist: readonly string[];
   readonly onDone: () => void;
 }
 
@@ -206,7 +207,7 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
       />
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="tools-head">
-          {salon && <SalonBar customer={salon.customer} wish={salon.wish} view={salonView} onViewChange={setSalonView} onDone={salon.onDone} />}
+          {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} onDone={salon.onDone} />}
           {!salon && (
           <DesignsMenu
             design={design}

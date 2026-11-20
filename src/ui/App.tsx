@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { createDesign, createHistory } from '../core';
+import { createDesign, createHistory, type Difficulty, generateWish, lengthLimit, scoreWish, type Stars, type Wish, type WishResult } from '../core';
 import type { CustomerEntry } from '../scene/customerManifest';
 import { httpAiDesigner } from '../data/aiDesigner';
 import { httpDesignRepository } from '../data/designRepository';
@@ -8,10 +8,27 @@ import { historyReducer } from './historyReducer';
 import { type SavedState, startState } from './saving';
 import { loadSkin, saveSkin } from './skin';
 import { salonEnabled } from './flags';
-import { loadCustomers, nextCustomer, TEST_WISH } from './salon';
+import { loadCustomers, nextCustomer } from './salon';
+import { SalonResult } from './SalonResult';
+import { checklistLine, wishText } from './wishText';
 import { MainMenu, type MenuChoice } from './MainMenu';
 import { StartScreen } from './StartScreen';
 import { loadTheme, saveTheme } from './theme';
+
+/** The salon game: the customer in the chair, her wish, the latest result (null while designing) and the most stars she gave so far. */
+interface SalonState {
+  readonly customers: readonly CustomerEntry[];
+  readonly customer: CustomerEntry;
+  readonly wish: Wish;
+  readonly difficulty: Difficulty;
+  readonly result: WishResult | null;
+  readonly best: Stars;
+}
+
+/** A random seed for a wish; `generateWish` itself is deterministic. */
+function newWishSeed(): number {
+  return crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+}
 
 const repository = httpDesignRepository((url, init) => fetch(url, init));
 const designer = httpAiDesigner((url, init) => fetch(url, init));
@@ -27,26 +44,26 @@ export function App() {
   /** With the salon game on: whether free design was chosen in the main menu, so the hand and foot cards show. */
   const [free, setFree] = useState(false);
   /** The salon game: the customer in the chair, whether she is done, or a message when the list could not be loaded. */
-  const [salon, setSalon] = useState<{ readonly customers: readonly CustomerEntry[]; readonly customer: CustomerEntry; readonly done: boolean } | { readonly error: string } | null>(null);
+  const [salon, setSalon] = useState<SalonState | { readonly error: string } | null>(null);
   const [history, dispatch] = useReducer(historyReducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
   /** The saved copy of the open design; kept here so it survives switching between hand and foot. */
   const [saved, setSaved] = useState<SavedState>(() => startState(history.present));
 
   useEffect(() => saveSkin(skin), [skin]);
 
-  /** Brings in the next customer with a fresh design. */
-  const receive = (customers: readonly CustomerEntry[], current: CustomerEntry | null) => {
+  /** Brings in the next customer with a fresh design and a new wish. */
+  const receive = (customers: readonly CustomerEntry[], current: CustomerEntry | null, difficulty: Difficulty) => {
     const customer = nextCustomer(customers, current, Math.random);
     if (customer === null) return;
     dispatch({ type: 'load', design: createDesign(`Klant ${customer.name}`) });
-    setSalon({ customers, customer, done: false });
+    setSalon({ customers, customer, wish: generateWish(newWishSeed(), 'hand', difficulty), difficulty, result: null, best: 0 });
   };
 
   const startSalon = () => {
     setPart('hand');
     setSalon(null);
     loadCustomers().then(
-      (customers) => receive(customers, null),
+      (customers) => receive(customers, null, 1),
       (reason: unknown) => setSalon({ error: reason instanceof Error ? reason.message : 'Klanten laden mislukt.' }),
     );
   };
@@ -87,21 +104,30 @@ export function App() {
           <p className="loading" role="alert">
             {salon.error}
           </p>
-        ) : salon !== null && salon.done ? (
-          <section className="start viewer" aria-labelledby="done-title">
-            <h2 id="done-title" className="start-title">
-              Klaar! {salon.customer.name} is blij.
-            </h2>
-            <p className="salon-wish">Een beoordeling met sterren komt later.</p>
-            <button type="button" className="salon-done" onClick={() => receive(salon.customers, salon.customer)}>
-              Volgende klant
-            </button>
-          </section>
+        ) : salon !== null && salon.result !== null ? (
+          <SalonResult
+            customer={salon.customer}
+            wish={salon.wish}
+            result={salon.result}
+            best={salon.best}
+            onRetry={() => setSalon({ ...salon, result: null })}
+            onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(5, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
+          />
         ) : (
           <Editor
             key={salon ? `salon-${salon.customer.id}` : part}
             part={part}
-            {...(salon && { salon: { customer: salon.customer, wish: TEST_WISH, onDone: () => setSalon({ ...salon, done: true }) } })}
+            {...(salon && {
+              salon: {
+                customer: salon.customer,
+                wish: wishText(salon.wish, salon.customer.id, lengthLimit('hand')),
+                checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit('hand'))),
+                onDone: () => {
+                  const result = scoreWish(salon.wish, history.present);
+                  setSalon({ ...salon, result, best: Math.max(salon.best, result.stars) as Stars });
+                },
+              },
+            })}
             history={history}
             dispatch={dispatch}
             theme={theme}

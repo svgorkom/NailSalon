@@ -1,9 +1,6 @@
 import type { CustomerEntry } from '../scene/customerManifest';
 import { parseManifest } from '../scene/customerManifest';
 
-/** The wish of every customer until wishes come from `core` (phase 4): there is no score yet. */
-export const TEST_WISH = 'Ik wil rode glanzende nagels, met één steentje op elke ringvinger.';
-
 /**
  * The next customer: a different one from `current` when there is more than one. `random` returns a number in [0, 1), so tests need no randomness.
  * Returns null when there are no customers.

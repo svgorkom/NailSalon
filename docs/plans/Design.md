@@ -130,3 +130,11 @@ The salon game lets customers ask for a design that the player must make. The pl
 - **Generating** (`generateWish(seed, part, difficulty)`) is deterministic. It never combines two requirements of the same kind on overlapping nails, and `validateWish` rejects them. Toe wishes use only toenail shapes and lengths.
 - **Test oracle**: `tests/core/game/solve.ts` builds a design that meets any wish; the tests check that it scores 1 for 300 seeds, both parts and every difficulty, so every generated wish can be met.
 - The Dutch wish text belongs in the UI, not in core.
+
+### Salon game loop (phase 4/5, behind `?salon=1`)
+
+- A customer shows up with a wish (`generateWish`), written in Dutch by `src/ui/wishText.ts` and shown as a checklist.
+- **Klaar** scores the design with `scoreWish`: 0-3 stars, a mark per requirement (✔/≈/✖), and a note when the design is creative.
+- The result screen offers "Ik pas het aan" (retry, best attempt kept) or "Volgende klant".
+- Difficulty goes up by one (max 5) after a round with at least 2 stars.
+- No coins, prices, unlocks or saved progress yet (decided with the owner).
