@@ -13,10 +13,14 @@ interface Gltf {
   readonly skins?: readonly { readonly joints: readonly number[] }[];
 }
 
-/** The JSON chunk of a binary glTF file, read as text: it runs from byte 20 to the last closing brace before the binary chunk. */
+/**
+ * The JSON chunk of a binary glTF file, read as text: it runs from the first opening brace after the "JSON" chunk tag to the last closing brace
+ * before the binary chunk. (The header has binary lengths, so no fixed byte offsets: decoding them as text changes their width.)
+ */
 function readGltf(file: string): Gltf {
-  const end = file.lastIndexOf('}', file.indexOf('BIN\0', 20));
-  return JSON.parse(file.slice(20, end + 1)) as Gltf;
+  const start = file.indexOf('{', file.indexOf('JSON'));
+  const end = file.lastIndexOf('}', file.indexOf('BIN\0', start));
+  return JSON.parse(file.slice(start, end + 1)) as Gltf;
 }
 
 const files = import.meta.glob<string>('../../public/assets/customers/*.glb', { query: '?raw', import: 'default', eager: true });
