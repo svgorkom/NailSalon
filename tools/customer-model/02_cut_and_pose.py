@@ -23,7 +23,8 @@ bpy.ops.wm.open_mainfile(filepath=f'{WORK}/human.blend')
 REFERENCE_HEIGHT = 1.637
 SCALE_Z = bpy.data.objects['Human'].dimensions.z / REFERENCE_HEIGHT
 CUT_Z = 0.86 * SCALE_Z           # metres; below this (standing human) the body is hidden under the table
-HEAD_PITCH_DEG = 14.0            # looking down at the hand
+SMILE_LIFT = 0.006               # metres the mouth corners rise (standing human)
+HEAD_PITCH_DEG = 5.0            # looking at the hand, but not so far down that the face looks sad
 HAIR_MIN_Z = CUSTOMER['hair']['cutZ'] * SCALE_Z               # the hair of the MPFB helper is waist long; cut it at the neck (standing human, metres)
 FRINGE = dict(x=0.085, y=-0.065, z=1.58 * SCALE_Z)   # no hair in front of the face: the helper has a fringe over the eyes
 FACE_FRONT_Y, FACE_FRONT_Z = -0.06, 1.52 * SCALE_Z     # no strand ends in front of the cheeks, chin or mouth
@@ -284,6 +285,18 @@ print('hand back after posing', (DORSAL_SIGN * dorsal()).to_tuple(3))
 # Left arm: the hand rests in the lap, below the table.
 align('upperarm01.L', segment('upperarm01.L', 'lowerarm01.L'), LEFT_UPPER_ARM)
 align('lowerarm01.L', segment('lowerarm01.L', 'wrist.L'), LEFT_FOREARM)
+
+# A friendly mouth: the corners of the lips go up a little (the helper's neutral mouth looks sad from the front).
+lips_group = body.vertex_groups['lips'].index
+lip_verts = [v for v in body.data.vertices if any(g.group == lips_group and g.weight > 0.3 for g in v.groups)]
+half_width = max(abs(v.co.x) for v in lip_verts)
+mouth_z = sum(v.co.z for v in lip_verts) / len(lip_verts)
+mouth_y = sum(v.co.y for v in lip_verts) / len(lip_verts)
+for v in body.data.vertices:
+    across = abs(v.co.x) / half_width
+    if across > 2.5 or v.co.y > mouth_y + 0.03:      # only the front of the face around the mouth
+        continue
+    v.co.z += SMILE_LIFT * SCALE_Z * min(across, 1.0) ** 2 * math.exp(-max(0.0, across - 1.0) * 2.5) * math.exp(-((v.co.z - mouth_z) / (0.014 * SCALE_Z)) ** 2)
 
 # Head down, looking at the hand.
 rotate_about('head', Matrix.Rotation(math.radians(HEAD_PITCH_DEG), 3, Vector((1, 0, 0))))
