@@ -114,8 +114,8 @@ Six customers, `public/assets/customers/<id>.glb` (emma, fatima, mei, ria, lotte
 
 ## Salon game screen (phase 3, behind a flag)
 
-- Flag: `?salon=1` in the address turns the game on for this browser and keeps it (`?salon=0` turns it off); without it the start screen has only Hand and Voet (`src/ui/flags.ts`). A merge to `main` deploys to the daughter, so the game stays hidden until it is finished.
-- Start screen: a third card "Salon". It loads `manifest.json`, picks a customer (never the same twice in a row, `nextCustomer` with an injected `random`) and gives a fresh design (`load`: no undo back into the previous customer's nails).
+- Flag: `?salon=1` in the address turns the game on for this browser and keeps it (`?salon=0` turns it off); without it the app opens on Hand and Voet as before (`src/ui/flags.ts`). With it the app opens on a main menu (`MainMenu`): **Nagelontwerp** (free design: the Hand and Voet cards, "← Menu" goes back) or **Nagelsalon** (the game; "← Kies opnieuw" goes back to the menu). A merge to `main` deploys to the daughter, so the game stays hidden until it is finished.
+- Nagelsalon: it loads `manifest.json`, picks a customer (never the same twice in a row, `nextCustomer` with an injected `random`) and gives a fresh design (`load`: no undo back into the previous customer's nails).
 - `Editor` takes an optional `salon` (customer, wish, `onDone`). Same tools as the free mode; in the game the skin settings, the designs menu (save and open) and the AI tab are hidden, and the scene is `ModelScene part="customer"` with `Salon` (table, towel, wall, lamp; `src/scene/Salon.tsx`) as children, orbit limited to a small turn, no panning (`limited`), and the customer sliding in (`enter`).
 - Camera presets in `src/scene/salonViews.ts` (Salon, Dichtbij); the camera glides between them (`view`).
 - The wish is a fixed test text (`TEST_WISH`); "Klaar" shows a thank-you screen and "Volgende klant". Scoring and real wishes come with phase 4 (PR #33).

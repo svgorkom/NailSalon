@@ -9,7 +9,8 @@ import { type SavedState, startState } from './saving';
 import { loadSkin, saveSkin } from './skin';
 import { salonEnabled } from './flags';
 import { loadCustomers, nextCustomer, TEST_WISH } from './salon';
-import { StartScreen, type StartChoice } from './StartScreen';
+import { MainMenu, type MenuChoice } from './MainMenu';
+import { StartScreen } from './StartScreen';
 import { loadTheme, saveTheme } from './theme';
 
 const repository = httpDesignRepository((url, init) => fetch(url, init));
@@ -23,6 +24,8 @@ export function App() {
   /** What is being painted; null shows the start screen. The design stays when you go back to choose again. */
   const [part, setPart] = useState<Part | null>(null);
   const [showSalon] = useState(salonEnabled);
+  /** With the salon game on: whether free design was chosen in the main menu, so the hand and foot cards show. */
+  const [free, setFree] = useState(false);
   /** The salon game: the customer in the chair, whether she is done, or a message when the list could not be loaded. */
   const [salon, setSalon] = useState<{ readonly customers: readonly CustomerEntry[]; readonly customer: CustomerEntry; readonly done: boolean } | { readonly error: string } | null>(null);
   const [history, dispatch] = useReducer(historyReducer, undefined, () => createHistory(createDesign('Mijn ontwerp')));
@@ -39,11 +42,7 @@ export function App() {
     setSalon({ customers, customer, done: false });
   };
 
-  const choose = (choice: StartChoice) => {
-    if (choice !== 'salon') {
-      setPart(choice);
-      return;
-    }
+  const startSalon = () => {
     setPart('hand');
     setSalon(null);
     loadCustomers().then(
@@ -52,10 +51,19 @@ export function App() {
     );
   };
 
+  const chooseFromMenu = (choice: MenuChoice) => {
+    if (choice === 'free') setFree(true);
+    else startSalon();
+  };
+
+  /** Back one screen: out of the salon to the main menu, out of the editor to the hand and foot cards. */
   const leave = () => {
+    if (salon !== null) setFree(false);
     setPart(null);
     setSalon(null);
   };
+
+  const inFreeChoice = showSalon && free && part === null;
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -65,16 +73,16 @@ export function App() {
   return (
     <>
       <header className="app-header panel">
-        {part !== null && (
-          <button type="button" className="back" onClick={leave}>
-            ← Kies opnieuw
+        {(part !== null || inFreeChoice) && (
+          <button type="button" className="back" onClick={part !== null ? leave : () => setFree(false)}>
+            {inFreeChoice ? '← Menu' : '← Kies opnieuw'}
           </button>
         )}
         <h1 className="title">NailSalon</h1>
       </header>
       <main>
         {part === null ? (
-          <StartScreen onChoose={choose} salon={showSalon} />
+          showSalon && !free ? <MainMenu onChoose={chooseFromMenu} /> : <StartScreen onChoose={setPart} />
         ) : salon !== null && 'error' in salon ? (
           <p className="loading" role="alert">
             {salon.error}
