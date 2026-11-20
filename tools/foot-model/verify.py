@@ -1,7 +1,9 @@
 """Checks a foot.glb (or hand.glb): joints, bounds, skin weights, the world frames of the nail anchors, and that the fitted nail
 surface of every anchor lies on the skin.
 
-    python -I verify.py FILE.glb
+    python -I verify.py FILE.glb [MESH]
+
+MESH is the name of the mesh whose skin the nails are checked against (default: the first mesh).
 """
 import json
 import struct
@@ -55,7 +57,7 @@ def accessor(gltf, binary, index, components):
     return np.frombuffer(binary, dtype='<f4', count=acc['count'] * components, offset=view.get('byteOffset', 0) + acc.get('byteOffset', 0)).reshape(-1, components)
 
 
-def main(path):
+def main(path, mesh_name=None):
     gltf, binary = load(path)
     names = [node.get('name') for node in gltf['nodes']]
     world = world_matrices(gltf)
@@ -68,7 +70,8 @@ def main(path):
     for image in gltf['images']:
         print('image', image.get('name'), image['mimeType'], gltf['bufferViews'][image['bufferView']]['byteLength'], 'bytes')
 
-    primitive = gltf['meshes'][0]['primitives'][0]
+    mesh = next((m for m in gltf['meshes'] if m['name'] == mesh_name), gltf['meshes'][0])
+    primitive = mesh['primitives'][0]
     skin = cKDTree(accessor(gltf, binary, primitive['attributes']['POSITION'], 3))
     weights = accessor(gltf, binary, primitive['attributes']['WEIGHTS_0'], 4)
     print('weights per vertex sum to', weights.sum(1).min().round(4), 'to', weights.sum(1).max().round(4))
@@ -89,4 +92,4 @@ def main(path):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

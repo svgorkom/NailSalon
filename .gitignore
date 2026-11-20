@@ -23,3 +23,5 @@ obj/
 tools/foot-model/work/
 tools/foot-model/mpfb2/
 __pycache__/
+tools/customer-model/work/
+tools/customer-model/mpfb2/

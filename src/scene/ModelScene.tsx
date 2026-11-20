@@ -1,7 +1,7 @@
 import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/drei';
-import { Canvas, createPortal, type ThreeEvent, useThree } from '@react-three/fiber';
-import { Fragment, useEffect, useMemo } from 'react';
-import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
+import { Canvas, createPortal, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
+import { Fragment, type ReactNode, useEffect, useMemo, useRef } from 'react';
+import { type BufferGeometry, CanvasTexture, type Group, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Texture, Vector3 } from 'three';
 import { type Design, type Digit, FINGERS, type Finish, type Gem, type GemKind, type Nail, nailAt, TOES } from '../core';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
@@ -14,8 +14,11 @@ import { nearestDigit, type Point } from './picking';
 /** Which part of the body is shown. */
 export type Part = 'hand' | 'foot';
 
+/** What the scene can show: a part on its own, or the customer of the salon game (still a proof, see `ProtoViewer`). */
+type ScenePart = Part | 'customer';
+
 interface ModelSceneProps {
-  readonly part: Part;
+  readonly part: ScenePart;
   readonly design: Design;
   readonly selected: Digit | null;
   readonly theme: Theme;
@@ -24,16 +27,36 @@ interface ModelSceneProps {
   /** Holds the texture of each nail: base colour, drawing and stickers. */
   readonly paint: NailPaint;
   readonly onSelect: (digit: Digit) => void;
+  /** The model file of a customer; needed for the part `customer`, ignored for the others. The previous customer is released when this changes. */
+  readonly modelUrl?: string;
+  /** Limits the camera to a small turn around the view and no panning: the salon game, where the presets do the moving. */
+  readonly limited?: boolean;
+  /** The model walks in from the side when it appears (a customer arriving). */
+  readonly enter?: boolean;
+  /** Where the camera stands and looks, in scene units; the camera glides there when it changes. Without it the part's own view stays. */
+  readonly view?: CameraView;
+  /** Rendered inside the canvas, for tools that need the renderer or the frame loop. */
+  readonly children?: ReactNode;
+}
+
+/** A camera position and the point it looks at. */
+export interface CameraView {
+  readonly position: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
 }
 
 interface PartSetup {
-  readonly url: string;
+  /** Model file; a customer has none here because there are several (`modelUrl`). */
+  readonly url: string | null;
   readonly digits: readonly Digit[];
   readonly scale: number;
   /** Where the camera looks, in scene units (the model scaled). */
   readonly target: readonly [number, number, number];
   /** A tap on the skin selects the digit whose nail is within this distance (metres): the nail itself is small on a phone. */
   readonly pickDistance: number;
+  readonly camera: readonly [number, number, number];
+  readonly minDistance: number;
+  readonly maxDistance: number;
 }
 
 /**
@@ -41,11 +64,12 @@ interface PartSetup {
  * of the foot towards +z. The hand is looked at in the middle with the arm running off the bottom; the foot is smaller, so it is
  * scaled less, and its middle is not at the origin: x runs from -3.6 to 5.1 cm and y from -7.7 to 18 cm.
  */
-const SETUPS: Readonly<Record<Part, PartSetup>> = {
-  hand: { url: `${import.meta.env.BASE_URL}assets/hand/hand.glb`, digits: FINGERS, scale: 12, target: [0, 1, 0], pickDistance: 0.03 },
-  foot: { url: `${import.meta.env.BASE_URL}assets/foot/foot.glb`, digits: TOES, scale: 10, target: [0.07, 0.5, 0], pickDistance: 0.012 },
+const SETUPS: Readonly<Record<ScenePart, PartSetup>> = {
+  hand: { url: `${import.meta.env.BASE_URL}assets/hand/hand.glb`, digits: FINGERS, scale: 12, target: [0, 1, 0], pickDistance: 0.03, camera: [0, 1, 4.6], minDistance: 1.2, maxDistance: 9 },
+  foot: { url: `${import.meta.env.BASE_URL}assets/foot/foot.glb`, digits: TOES, scale: 10, target: [0.07, 0.5, 0], pickDistance: 0.012, camera: [0.07, 0.5, 4.6], minDistance: 1.2, maxDistance: 9 },
+  // In metres, origin on the table under the right wrist, the customer behind it facing +z; the player looks from +z.
+  customer: { url: null, digits: FINGERS, scale: 1, target: [0.12, 0.25, 0], pickDistance: 0.025, camera: [0.12, 0.45, 1.2], minDistance: 0.15, maxDistance: 2.5 },
 };
-const CAMERA_DISTANCE = 4.6;
 
 const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: number; clearcoat: number }>> = {
   gloss: { roughness: 0.25, metalness: 0, clearcoat: 1 },
@@ -55,14 +79,16 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
   chrome: { roughness: 0.05, metalness: 1, clearcoat: 1 },
 };
 
-useGLTF.preload(SETUPS.hand.url);
-useGLTF.preload(SETUPS.foot.url);
+useGLTF.preload(`${import.meta.env.BASE_URL}assets/hand/hand.glb`);
+useGLTF.preload(`${import.meta.env.BASE_URL}assets/foot/foot.glb`);
+// Customers are not preloaded: one is loaded at a time and released again.
 
-export function ModelScene({ part, design, selected, theme, skin, paint, onSelect }: ModelSceneProps) {
+export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, modelUrl, limited, enter, view, children }: ModelSceneProps) {
   const setup = SETUPS[part];
-  const [x, y, z] = setup.target;
+  const url = setup.url ?? modelUrl;
+  if (!url) throw new Error(`Part "${part}" needs a modelUrl.`);
   return (
-    <Canvas key={part} frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: [x, y, z + CAMERA_DISTANCE], fov: 40 }} data-testid={`${part}-scene`}>
+    <Canvas key={part} frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: [...setup.camera], fov: 40 }} data-testid={`${part}-scene`}>
       <ambientLight intensity={0.3} color={SCENE_LIGHT[theme].sky} />
       <directionalLight position={[3, 5, 4]} intensity={1.6} color={SCENE_LIGHT[theme].sun} />
       <Environment resolution={256}>
@@ -70,14 +96,63 @@ export function ModelScene({ part, design, selected, theme, skin, paint, onSelec
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Body setup={setup} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
-      <OrbitControls makeDefault zoomToCursor target={setup.target} minDistance={1.2} maxDistance={9} />
+      <Body setup={setup} url={url} release={setup.url === null} enter={enter === true} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
+      <OrbitControls
+        makeDefault
+        zoomToCursor
+        target={setup.target}
+        minDistance={limited ? 0.3 : setup.minDistance}
+        maxDistance={limited ? 1.8 : setup.maxDistance}
+        enablePan={!limited}
+        minAzimuthAngle={limited ? -0.5 : -Infinity}
+        maxAzimuthAngle={limited ? 0.5 : Infinity}
+        minPolarAngle={limited ? 0.3 : 0}
+        maxPolarAngle={limited ? 1.5 : Math.PI}
+      />
+      {view && <CameraGlide view={view} />}
+      {children}
     </Canvas>
   );
 }
 
+const GLIDE_SECONDS = 0.6;
+
+/** Moves the camera and the orbit target to `view` in a short glide. Frames are only requested while it moves. */
+function CameraGlide({ view }: { readonly view: CameraView }) {
+  const camera = useThree((state) => state.camera);
+  const controls = useThree((state) => state.controls) as { target: Vector3; update: () => void } | null;
+  const invalidate = useThree((state) => state.invalidate);
+  const motion = useRef<{ from: Vector3; fromTarget: Vector3; elapsed: number } | null>(null);
+
+  useEffect(() => {
+    if (!controls) return;
+    motion.current = { from: camera.position.clone(), fromTarget: controls.target.clone(), elapsed: 0 };
+    invalidate();
+  }, [view, camera, controls, invalidate]);
+
+  useFrame((_, delta) => {
+    const current = motion.current;
+    if (!current || !controls) return;
+    current.elapsed += delta;
+    const t = Math.min(current.elapsed / GLIDE_SECONDS, 1);
+    const eased = t * t * (3 - 2 * t);
+    camera.position.lerpVectors(current.from, new Vector3(...view.position), eased);
+    controls.target.lerpVectors(current.fromTarget, new Vector3(...view.target), eased);
+    controls.update();
+    if (t < 1) invalidate();
+    else motion.current = null;
+  });
+
+  return null;
+}
+
 interface BodyProps {
   readonly setup: PartSetup;
+  readonly url: string;
+  /** Dispose the model's GPU resources and forget it when it goes away: for models that are swapped. */
+  readonly release: boolean;
+  /** Slide in from the side when the model appears. */
+  readonly enter: boolean;
   readonly design: Design;
   readonly selected: Digit | null;
   readonly skin: string;
@@ -85,17 +160,34 @@ interface BodyProps {
   readonly onSelect: (digit: Digit) => void;
 }
 
-function Body({ setup, design, selected, skin, paint, onSelect }: BodyProps) {
-  const { scene } = useGLTF(setup.url);
+function Body({ setup, url, release, enter, design, selected, skin, paint, onSelect }: BodyProps) {
+  const { scene } = useGLTF(url);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene, setup.digits), [scene, setup.digits]);
   const gemGeometries = useMemo(() => createGemGeometries(), []);
+
+  useEffect(() => {
+    if (!release) return undefined;
+    return () => {
+      scene.traverse((object) => {
+        if (!(object instanceof Mesh)) return;
+        object.geometry.dispose();
+        if (object instanceof SkinnedMesh) object.skeleton.dispose();
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          for (const value of Object.values(material)) if (value instanceof Texture) value.dispose();
+          material.dispose();
+        }
+      });
+      useGLTF.clear(url);
+    };
+  }, [scene, url, release]);
+
   useEffect(() => () => Object.values(gemGeometries).forEach((geometry) => geometry.dispose()), [gemGeometries]);
 
   useEffect(() => {
     const [r, g, b] = skinTint(skin);
     scene.traverse((object) => {
-      if (object instanceof SkinnedMesh && object.material instanceof MeshStandardMaterial) {
+      if (object instanceof SkinnedMesh && object.material instanceof MeshStandardMaterial && object.material.name === 'Skin') {
         object.material.color.setRGB(r, g, b, LinearSRGBColorSpace);
       }
     });
@@ -111,7 +203,9 @@ function Body({ setup, design, selected, skin, paint, onSelect }: BodyProps) {
 
   return (
     <group scale={setup.scale}>
-      <primitive object={scene} onClick={pick} />
+      <Arrival enabled={enter} key={url}>
+        <primitive object={scene} onClick={pick} />
+      </Arrival>
       {setup.digits.map((digit) => {
         const nail = nailAt(design, digit);
         return (
@@ -130,6 +224,33 @@ function Body({ setup, design, selected, skin, paint, onSelect }: BodyProps) {
       })}
     </group>
   );
+}
+
+const ARRIVAL_SECONDS = 1.3;
+const ARRIVAL_DISTANCE = 1.4;
+
+/** Slides its children in from the side (metres) when it is first shown, if enabled; frames are only requested while it moves. */
+function Arrival({ enabled, children }: { readonly enabled: boolean; readonly children: ReactNode }) {
+  const group = useRef<Group>(null);
+  const invalidate = useThree((state) => state.invalidate);
+  const elapsed = useRef(enabled ? 0 : ARRIVAL_SECONDS);
+
+  useEffect(() => {
+    if (group.current && elapsed.current < ARRIVAL_SECONDS) {
+      group.current.position.x = ARRIVAL_DISTANCE;
+      invalidate();
+    }
+  }, [invalidate]);
+
+  useFrame((_, delta) => {
+    if (!group.current || elapsed.current >= ARRIVAL_SECONDS) return;
+    elapsed.current = Math.min(elapsed.current + delta, ARRIVAL_SECONDS);
+    const t = elapsed.current / ARRIVAL_SECONDS;
+    group.current.position.x = ARRIVAL_DISTANCE * (1 - t) * (1 - t);
+    invalidate();
+  });
+
+  return <group ref={group}>{children}</group>;
 }
 
 /** Position of `node` in the frame of `root`. */

@@ -1,6 +1,9 @@
 import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
 import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
+import type { CustomerEntry } from '../scene/customerManifest';
 import { NailPaint } from '../scene/nailPaint';
+import { Salon } from '../scene/Salon';
+import { SALON_VIEWS, type SalonViewId } from '../scene/salonViews';
 import type { AiDesigner } from '../data/aiDesigner';
 import type { DesignRepository } from '../data/designRepository';
 import { AiTools, type ChatLine } from './AiTools';
@@ -10,6 +13,8 @@ import { type Action } from './historyReducer';
 import type { SavedState } from './saving';
 import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
+import { SalonBar } from './SalonBar';
+import { customerModelUrl } from './salon';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
 import { FIRST_STICKERS, withRecentSticker } from './recentStickers';
 import type { DrawingTool } from './ToolIcon';
@@ -49,8 +54,18 @@ function newSpongeSeed(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
 }
 
+/** The salon game: one customer is in the chair. The design tools are the same as in the free mode, with her skin and without saving and the AI. */
+export interface SalonRound {
+  readonly customer: CustomerEntry;
+  readonly wish: string;
+  readonly checklist: readonly string[];
+  readonly onDone: () => void;
+}
+
 interface EditorProps {
   readonly part: Part;
+  /** Set in the salon game. */
+  readonly salon?: SalonRound;
   readonly history: History;
   readonly dispatch: Dispatch<Action>;
   readonly theme: Theme;
@@ -64,7 +79,7 @@ interface EditorProps {
   readonly onSavedChange: (saved: SavedState) => void;
 }
 
-export function Editor({ part, history, dispatch, theme, onThemeChange, skin, onSkinChange, repository, designer, newId, saved, onSavedChange }: EditorProps) {
+export function Editor({ part, salon, history, dispatch, theme, onThemeChange, skin, onSkinChange, repository, designer, newId, saved, onSavedChange }: EditorProps) {
   const digits: readonly Digit[] = part === 'hand' ? FINGERS : TOES;
   const allTarget = part === 'hand' ? 'fingers' : 'toes';
   const shapes = part === 'hand' ? NAIL_SHAPES : TOE_SHAPES;
@@ -84,6 +99,7 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
   const [gemClear, setGemClear] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [chat, setChat] = useState<readonly ChatLine[]>([]);
+  const [salonView, setSalonView] = useState<SalonViewId>('salon');
   const [paint] = useState(() => new NailPaint());
   const itemCount = useRef(0);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -154,8 +170,26 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
   return (
     <div className="editor" ref={editorRef} style={{ ['--tools-width' as string]: `${toolsWidth}px` }}>
       <div className="viewer">
-        <Suspense fallback={<p className="loading">{part === 'hand' ? 'Hand' : 'Voet'} laden…</p>}>
-          <ModelScene part={part} design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
+        <Suspense fallback={<p className="loading">{salon ? salon.customer.name : part === 'hand' ? 'Hand' : 'Voet'} laden…</p>}>
+          {salon ? (
+            <ModelScene
+              part="customer"
+              modelUrl={customerModelUrl(salon.customer)}
+              design={design}
+              selected={allNails ? null : selected}
+              theme={theme}
+              skin={salon.customer.skin}
+              paint={paint}
+              onSelect={setSelected}
+              view={SALON_VIEWS[salonView]}
+              limited
+              enter
+            >
+              <Salon />
+            </ModelScene>
+          ) : (
+            <ModelScene part={part} design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
+          )}
         </Suspense>
         <div className="vignette" />
       </div>
@@ -173,6 +207,8 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
       />
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="tools-head">
+          {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} onDone={salon.onDone} />}
+          {!salon && (
           <DesignsMenu
             design={design}
             repository={repository}
@@ -187,11 +223,12 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
               setSelectedItem(null);
             }}
           />
+          )}
           <div className="tabs" role="group" aria-labelledby={modeLabelId}>
             <span id={modeLabelId} className="visually-hidden">
               Wat wil je doen?
             </span>
-            {(Object.keys(MODE_LABELS) as Mode[]).map((name) => (
+            {(Object.keys(MODE_LABELS) as Mode[]).filter((name) => !(salon && name === 'ai')).map((name) => (
               <button key={name} type="button" className="choice tab" aria-pressed={name === mode} onClick={() => setMode(name)}>
                 <span className="tab-icon" aria-hidden="true">
                   {MODE_LABELS[name].icon}
@@ -366,6 +403,7 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
           )}
           <details className="settings">
             <summary>⚙️ Instellingen</summary>
+            {!salon && (
             <fieldset>
               <legend>Huidskleur</legend>
               <div className="swatches">
@@ -383,6 +421,7 @@ export function Editor({ part, history, dispatch, theme, onThemeChange, skin, on
                 ))}
               </div>
             </fieldset>
+            )}
             <fieldset>
               <legend>Thema</legend>
               <div className="choices">

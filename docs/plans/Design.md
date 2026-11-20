@@ -97,3 +97,44 @@ When the model is regenerated, keep these names and axes. In Blender's glTF expo
 - `Target` is a digit (finger or toe), `'fingers'` or `'toes'`. Toenails allow `TOE_SHAPES` (round, oval, square, soft square) and at most `TOE_MAX_LENGTH`; `apply` throws `RangeError` otherwise. The maximum of 0.3 and the shapes are a first guess: adjust after trying.
 - `ModelScene` shows the hand or the foot (`SETUPS` in `src/scene/ModelScene.tsx`: scale, camera target, pick distance).
 - No left/right switch for now; the left foot comes later by mirroring.
+
+## Customer models (salon game)
+
+Six customers, `public/assets/customers/<id>.glb` (emma, fatima, mei, ria, lotte, noor; about 4.7 MB each) listed in `manifest.json` (`id`, `name`, `file`, `bytes`, `skin`, `about`; read with `parseManifest`). Each: a seated customer from the head down to the table, as one skinned mesh (`Customer`, about 43,000 vertices) next to `Cloth` (sweater, 4 mm thick) and `Hair`; about 62,000 vertices and 122,000 triangles in all, 100 joints. Metres, glTF Y-up. The origin is on the table top under the right wrist, the customer sits behind it facing +z and the player looks from +z. Her right hand lies palm down with the fingers towards the player; her left hand is in her lap, below table height, and the lower body is cut off under the table, so the game needs a table in front of it.
+
+- One mesh from the face to the fingertips, so the hand is connected to her arm without a seam. The sweater ends in a cuff at the wrist.
+- Materials: `Skin` and `Features` share one set of 2048² procedural textures (skin, lips, nails, eyes, brows, pores); `Hair` and `Cloth` are flat colours. The app tints only the material named `Skin` (`ModelScene`).
+- `NailBed_Thumb|Index|Middle|Ring|Pinky` on the last finger bones, with the same axes and `extras` as the hand (`tests/scene/customerModel.test.ts` checks them). Fitted to the skin within 0.4-0.8 mm on average.
+- Customers differ in age (22-55), body, face (MPFB race macros), skin (`skin` in the manifest is the tint to pass to the `Skin` material), hair colour and length, eyes, lips and sweater. Nail widths differ by up to 1.5 mm between customers (thumb 7.7-9.2 mm); the four most alike differ by 0.1 mm. All have a bob or short cut: the length, volume, parting and (hardly visible yet) waviness differ.
+- One customer is loaded at a time: `ModelScene` takes `modelUrl` for the part `customer` and disposes geometry, textures, skeleton and the loader cache when it is swapped; 20 swaps on the proof page keep geometries + textures at 29.
+- Hidden proof page: `/#/proto` (`src/ui/ProtoViewer.tsx`, not linked): a button per customer, "Wissel 20×" (memory check), views Salon, Close-up and Pols, and a 5-second measurement (fps, 95th percentile frame time, triangles, geometries, textures). `ModelScene` takes the part `customer` and an optional camera `view` it glides to.
+- Hair is generated (`tools/customer-model/hair.py`): about 1,000 ribbons (8 segments) that drape over the skull, plus a thin cap over the scalp so no skin shows; the texture cuts 14 thin hairs out of each ribbon (alpha-tested, `MASK`). It is one rigid object weighted to the head bone, about 18,000 vertices and 16,000 triangles, and adds about 0.8 MB per model (files are now 5.4-5.8 MB, close to the 6 MB budget).
+- Known weaknesses: the hair looks like hair but not like real strands (blocky patches on top, a straight edge at the forehead, no real curls or long hair: the shoulders are not collision-checked); the hand texture is sharper on `hand.glb` because the torso takes atlas space here; the face is plausible but slightly uncanny; no facial reactions yet. fps on a laptop and the daughter's phone is still to be measured with the proof page.
+- Made with `tools/customer-model` from `customers.json` (see its README).
+
+## Salon game screen (phase 3, behind a flag)
+
+- Flag: `?salon=1` in the address turns the game on for this browser and keeps it (`?salon=0` turns it off); without it the app opens on Hand and Voet as before (`src/ui/flags.ts`). With it the app opens on a main menu (`MainMenu`): **Nagelontwerp** (free design: the Hand and Voet cards, "← Menu" goes back) or **Nagelsalon** (the game; "← Kies opnieuw" goes back to the menu). A merge to `main` deploys to the daughter, so the game stays hidden until it is finished.
+- Nagelsalon: it loads `manifest.json`, picks a customer (never the same twice in a row, `nextCustomer` with an injected `random`) and gives a fresh design (`load`: no undo back into the previous customer's nails).
+- `Editor` takes an optional `salon` (customer, wish, `onDone`). Same tools as the free mode; in the game the skin settings, the designs menu (save and open) and the AI tab are hidden, and the scene is `ModelScene part="customer"` with `Salon` (table, towel, wall, lamp; `src/scene/Salon.tsx`) as children, orbit limited to a small turn, no panning (`limited`), and the customer sliding in (`enter`).
+- Camera presets in `src/scene/salonViews.ts` (Salon, Dichtbij); the camera glides between them (`view`).
+- The wish is a fixed test text (`TEST_WISH`); "Klaar" shows a thank-you screen and "Volgende klant". Scoring and real wishes come with phase 4 (PR #33).
+
+## Salon game: wishes and scoring (`src/core/game`)
+
+The salon game lets customers ask for a design that the player must make. The plan is in the NailSalon project (`game-plan.md`); this is the part that is built.
+
+- **Requirements are measurable.** A `Wish` is a part (`hand` or `foot`), a difficulty (1-5) and a list of `Requirement`s about the fields of a `Design`: colour family, finish, shape, length range, French tip, and the number of stickers or gems (optionally of given kinds). Each is about every nail (`'all'`) or one finger or toe. Free drawing and sponge work cannot be measured and are never required; using them only sets `creative` in the result.
+- **Colour families** (`classifyColor`) come from lightness, saturation and hue: black, white, grey, then red, orange, yellow, green, blue, purple, pink and brown by hue. Gold and silver are yellow or grey plus a metallic finish, so they are two requirements.
+- **Scoring** (`scoreWish`): every requirement gives 0 to 1, the mean over its nails. A colour in a neighbouring family gives 0.5; a length falls to 0 at 15% of the longest length outside its range; every sticker or gem too few or too many costs half. A requirement about one nail weighs 1.5, one about all nails 1. Stars: 3 from 0.9, 2 from 0.7, 1 from 0.4, otherwise 0.
+- **Generating** (`generateWish(seed, part, difficulty)`) is deterministic. It never combines two requirements of the same kind on overlapping nails, and `validateWish` rejects them. Toe wishes use only toenail shapes and lengths.
+- **Test oracle**: `tests/core/game/solve.ts` builds a design that meets any wish; the tests check that it scores 1 for 300 seeds, both parts and every difficulty, so every generated wish can be met.
+- The Dutch wish text belongs in the UI, not in core.
+
+### Salon game loop (phase 4/5, behind `?salon=1`)
+
+- A customer shows up with a wish (`generateWish`), written in Dutch by `src/ui/wishText.ts` and shown as a checklist.
+- **Klaar** scores the design with `scoreWish`: 0-3 stars, a mark per requirement (✔/≈/✖), and a note when the design is creative.
+- The result screen offers "Ik pas het aan" (retry, best attempt kept) or "Volgende klant".
+- Difficulty goes up by one (max 5) after a round with at least 2 stars.
+- No coins, prices, unlocks or saved progress yet (decided with the owner).

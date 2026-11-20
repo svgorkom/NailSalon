@@ -1709,3 +1709,21 @@ fieldset.bare {
   width: 2.5rem;
   height: 2.5rem;
 }
+
+/* Proof page of the salon game (/#/proto). */
+.proto { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
+.proto-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.5rem; }
+.proto-scene { min-height: 0; }
+
+/* Salon game (behind ?salon=1). */
+.start-emoji { display: grid; place-items: center; font-size: 4rem; }
+.salon-bar { display: grid; gap: 0.5rem; }
+.salon-name { margin: 0; font-size: 1.25rem; }
+.salon-wish { margin: 0; font-style: italic; }
+.salon-done { font-size: 1.1rem; padding: 0.6rem 1rem; }
+.salon-checklist { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
+.salon-result { gap: 0.75rem; }
+.salon-stars { color: #f5c518; letter-spacing: 0.1em; }
+.star-on { color: #f5c518; }
+.star-off { color: #5b5b52; }
+.salon-marks { list-style: none; padding-left: 0; }
