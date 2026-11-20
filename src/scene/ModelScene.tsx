@@ -1,7 +1,7 @@
 import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, createPortal, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef } from 'react';
-import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Texture, Vector3 } from 'three';
+import { type BufferGeometry, CanvasTexture, type Group, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Texture, Vector3 } from 'three';
 import { type Design, type Digit, FINGERS, type Finish, type Gem, type GemKind, type Nail, nailAt, TOES } from '../core';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
@@ -29,6 +29,10 @@ interface ModelSceneProps {
   readonly onSelect: (digit: Digit) => void;
   /** The model file of a customer; needed for the part `customer`, ignored for the others. The previous customer is released when this changes. */
   readonly modelUrl?: string;
+  /** Limits the camera to a small turn around the view and no panning: the salon game, where the presets do the moving. */
+  readonly limited?: boolean;
+  /** The model walks in from the side when it appears (a customer arriving). */
+  readonly enter?: boolean;
   /** Where the camera stands and looks, in scene units; the camera glides there when it changes. Without it the part's own view stays. */
   readonly view?: CameraView;
   /** Rendered inside the canvas, for tools that need the renderer or the frame loop. */
@@ -79,7 +83,7 @@ useGLTF.preload(`${import.meta.env.BASE_URL}assets/hand/hand.glb`);
 useGLTF.preload(`${import.meta.env.BASE_URL}assets/foot/foot.glb`);
 // Customers are not preloaded: one is loaded at a time and released again.
 
-export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, modelUrl, view, children }: ModelSceneProps) {
+export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, modelUrl, limited, enter, view, children }: ModelSceneProps) {
   const setup = SETUPS[part];
   const url = setup.url ?? modelUrl;
   if (!url) throw new Error(`Part "${part}" needs a modelUrl.`);
@@ -92,8 +96,19 @@ export function ModelScene({ part, design, selected, theme, skin, paint, onSelec
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Body setup={setup} url={url} release={setup.url === null} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
-      <OrbitControls makeDefault zoomToCursor target={setup.target} minDistance={setup.minDistance} maxDistance={setup.maxDistance} />
+      <Body setup={setup} url={url} release={setup.url === null} enter={enter === true} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
+      <OrbitControls
+        makeDefault
+        zoomToCursor
+        target={setup.target}
+        minDistance={limited ? 0.3 : setup.minDistance}
+        maxDistance={limited ? 1.8 : setup.maxDistance}
+        enablePan={!limited}
+        minAzimuthAngle={limited ? -0.5 : -Infinity}
+        maxAzimuthAngle={limited ? 0.5 : Infinity}
+        minPolarAngle={limited ? 0.3 : 0}
+        maxPolarAngle={limited ? 1.5 : Math.PI}
+      />
       {view && <CameraGlide view={view} />}
       {children}
     </Canvas>
@@ -136,6 +151,8 @@ interface BodyProps {
   readonly url: string;
   /** Dispose the model's GPU resources and forget it when it goes away: for models that are swapped. */
   readonly release: boolean;
+  /** Slide in from the side when the model appears. */
+  readonly enter: boolean;
   readonly design: Design;
   readonly selected: Digit | null;
   readonly skin: string;
@@ -143,7 +160,7 @@ interface BodyProps {
   readonly onSelect: (digit: Digit) => void;
 }
 
-function Body({ setup, url, release, design, selected, skin, paint, onSelect }: BodyProps) {
+function Body({ setup, url, release, enter, design, selected, skin, paint, onSelect }: BodyProps) {
   const { scene } = useGLTF(url);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene, setup.digits), [scene, setup.digits]);
@@ -186,7 +203,9 @@ function Body({ setup, url, release, design, selected, skin, paint, onSelect }: 
 
   return (
     <group scale={setup.scale}>
-      <primitive object={scene} onClick={pick} />
+      <Arrival enabled={enter} key={url}>
+        <primitive object={scene} onClick={pick} />
+      </Arrival>
       {setup.digits.map((digit) => {
         const nail = nailAt(design, digit);
         return (
@@ -205,6 +224,33 @@ function Body({ setup, url, release, design, selected, skin, paint, onSelect }: 
       })}
     </group>
   );
+}
+
+const ARRIVAL_SECONDS = 1.3;
+const ARRIVAL_DISTANCE = 1.4;
+
+/** Slides its children in from the side (metres) when it is first shown, if enabled; frames are only requested while it moves. */
+function Arrival({ enabled, children }: { readonly enabled: boolean; readonly children: ReactNode }) {
+  const group = useRef<Group>(null);
+  const invalidate = useThree((state) => state.invalidate);
+  const elapsed = useRef(enabled ? 0 : ARRIVAL_SECONDS);
+
+  useEffect(() => {
+    if (group.current && elapsed.current < ARRIVAL_SECONDS) {
+      group.current.position.x = ARRIVAL_DISTANCE;
+      invalidate();
+    }
+  }, [invalidate]);
+
+  useFrame((_, delta) => {
+    if (!group.current || elapsed.current >= ARRIVAL_SECONDS) return;
+    elapsed.current = Math.min(elapsed.current + delta, ARRIVAL_SECONDS);
+    const t = elapsed.current / ARRIVAL_SECONDS;
+    group.current.position.x = ARRIVAL_DISTANCE * (1 - t) * (1 - t);
+    invalidate();
+  });
+
+  return <group ref={group}>{children}</group>;
 }
 
 /** Position of `node` in the frame of `root`. */

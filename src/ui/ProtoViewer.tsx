@@ -4,17 +4,19 @@ import { type WebGLRenderer, Vector3 } from 'three';
 import { apply, createDesign, type Design } from '../core';
 import { type CustomerEntry, parseManifest } from '../scene/customerManifest';
 import { type CameraView, ModelScene } from '../scene/ModelScene';
+import { SALON_VIEWS } from '../scene/salonViews';
 import { NailPaint } from '../scene/nailPaint';
 import { loadTheme } from './theme';
 
 /** Proof page for the customer model of the salon game, at `/#/proto`. Not linked from the normal screens. */
 
 const VIEWS = {
-  salon: { label: 'Salon', view: { position: [0.12, 0.42, 1.2], target: [0.12, 0.25, 0] } },
-  closeup: { label: 'Close-up', view: { position: [0.02, 0.3, 0.5], target: [0.02, 0, 0.09] } },
-  face: { label: 'Gezicht', view: { position: [0.13, 0.56, 0.4], target: [0.13, 0.5, -0.2] } },
-  wrist: { label: 'Pols', view: { position: [-0.22, 0.14, 0.3], target: [0, 0.03, 0.02] } },
-} as const satisfies Record<string, { label: string; view: CameraView }>;
+  ...SALON_VIEWS,
+  face: { position: [0.13, 0.56, 0.4], target: [0.13, 0.5, -0.2] },
+  wrist: { position: [-0.22, 0.14, 0.3], target: [0, 0.03, 0.02] },
+} as const satisfies Record<string, CameraView>;
+
+const VIEW_LABELS: Readonly<Record<keyof typeof VIEWS, string>> = { salon: 'Salon', closeup: 'Close-up', face: 'Gezicht', wrist: 'Pols' };
 
 type ViewId = keyof typeof VIEWS;
 
@@ -137,7 +139,7 @@ export function ProtoViewer() {
       <div className="proto-bar">
         {(Object.keys(VIEWS) as ViewId[]).map((id) => (
           <button key={id} type="button" aria-pressed={id === viewId} onClick={() => setViewId(id)}>
-            {VIEWS[id].label}
+            {VIEW_LABELS[id]}
           </button>
         ))}
         <button
@@ -176,7 +178,7 @@ export function ProtoViewer() {
       <div className="proto-scene">
         {customer && (
           <Suspense fallback={<p>Laden…</p>}>
-            <ModelScene part="customer" modelUrl={`${import.meta.env.BASE_URL}assets/customers/${customer.file}`} design={design} selected={null} theme={loadTheme()} skin={customer.skin} paint={paint} onSelect={() => undefined} view={VIEWS[viewId].view}>
+            <ModelScene part="customer" modelUrl={`${import.meta.env.BASE_URL}assets/customers/${customer.file}`} design={design} selected={null} theme={loadTheme()} skin={customer.skin} paint={paint} onSelect={() => undefined} view={VIEWS[viewId]}>
               <RendererProbe rendererRef={rendererRef} />
               {measuring && (
                 <Benchmark

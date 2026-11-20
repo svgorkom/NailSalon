@@ -1714,3 +1714,10 @@ fieldset.bare {
 .proto { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
 .proto-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.5rem; }
 .proto-scene { min-height: 0; }
+
+/* Salon game (behind ?salon=1). */
+.start-emoji { display: grid; place-items: center; font-size: 4rem; }
+.salon-bar { display: grid; gap: 0.5rem; }
+.salon-name { margin: 0; font-size: 1.25rem; }
+.salon-wish { margin: 0; font-style: italic; }
+.salon-done { font-size: 1.1rem; padding: 0.6rem 1rem; }
