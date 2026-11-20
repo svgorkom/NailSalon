@@ -32,6 +32,7 @@ and look with `render_blend.py` (quick, Workbench) or `render_preview.py` (Cycle
 - Origin on the table top under the right wrist, the customer behind it facing +z, y up (metres, glTF axes). The player looks from +z.
 - Anchors `NailBed_Thumb|Index|Middle|Ring|Pinky` with the same axes and `extras` as `hand.glb` (checked by `tests/scene/customerModel.test.ts`).
 - Material `Skin` is the one the app tints; keep the other materials flat or textured separately.
+- Hair is made by `hair.py` (numpy only; the hair block in `02_cut_and_pose.py` feeds it the scalp and head vertices) and textured in `06_export.py`; `06_export.py` also rewrites the .glb JSON so the `Hair` material is alpha-tested.
 - Budget: file ≤ 6 MB (checked by `tests/scene/customerManifest.test.ts`).
 - Heights in `02_cut_and_pose.py` are scaled to the body height (`REFERENCE_HEIGHT`); hands and forearms are always kept in the cut. Add a customer by adding an entry to `customers.json` and building it; check the printed nail normal (about 0.27, -0.56, 0.78).
 - Every model is about 4.7 MB and a rebuild of all six adds about 28 MB to the git history: rebuild only when the model changes.

@@ -12,6 +12,7 @@ import { loadTheme } from './theme';
 const VIEWS = {
   salon: { label: 'Salon', view: { position: [0.12, 0.42, 1.2], target: [0.12, 0.25, 0] } },
   closeup: { label: 'Close-up', view: { position: [0.02, 0.3, 0.5], target: [0.02, 0, 0.09] } },
+  face: { label: 'Gezicht', view: { position: [0.13, 0.56, 0.4], target: [0.13, 0.5, -0.2] } },
   wrist: { label: 'Pols', view: { position: [-0.22, 0.14, 0.3], target: [0, 0.03, 0.02] } },
 } as const satisfies Record<string, { label: string; view: CameraView }>;
 

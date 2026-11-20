@@ -14,6 +14,7 @@ import bmesh
 import numpy as np
 from mathutils import Matrix, Vector
 from mpfb_boot import boot
+from hair import build_hair
 
 boot()
 bpy.ops.wm.open_mainfile(filepath=f'{WORK}/human.blend')
@@ -101,24 +102,41 @@ for poly in body.data.polygons:
             poly.material_index = index
 print('faces per slot', [sum(1 for p in body.data.polygons if p.material_index == i) for i in range(len(SLOTS))])
 
-# --- hair: shorter and away from the eyes ------------------------------------------------------------------------------------------
-bm = bmesh.new()
-bm.from_mesh(body.data)
+# --- hair: the helper's hair is dropped; ribbons are generated over the scalp (hair.py) ---------------------------------------------
 HAIR_SLOT, CLOTH_SLOT = 5, 6
 body.data.materials.append(bpy.data.materials.get('Cloth') or bpy.data.materials.new('Cloth'))
+scalp_group = body.vertex_groups['scalp'].index
+on_scalp = {v.index for v in body.data.vertices if any(g.group == scalp_group and g.weight > 0.5 for g in v.groups)}
+co = np.array([v.co[:] for v in body.data.vertices])
+head_top = max(co[i][2] for i in on_scalp)
+# The scalp group stops below the hairline at the front: every triangle near the crown is a root area too.
+roots_area = [poly for poly in body.data.polygons if poly.material_index == 0 and (all(i in on_scalp for i in poly.vertices) or sum(co[i][2] for i in poly.vertices) / len(poly.vertices) > head_top - 0.06)]
+scalp_triangles = np.array([[co[poly.vertices[0]], co[poly.vertices[k + 1]], co[poly.vertices[k + 2]]] for poly in roots_area for k in range(len(poly.vertices) - 2)])
+head_points = np.array([co[v.index] for v in body.data.vertices if v.co.z > head_top - 0.25 and abs(v.co.x) < 0.2 and abs(v.co.y) < 0.25 and v.index not in HAIR])
+HAIR_PARAMS = dict(length_z=CUSTOMER['hair']['cutZ'] * SCALE_Z, count=CUSTOMER['hair'].get('count', 1000), volume=CUSTOMER['hair'].get('volume', 0.5),
+                   parting=CUSTOMER['hair'].get('parting', 0.3), curl=CUSTOMER['hair'].get('curl', 0.0), curl_freq=CUSTOMER['hair'].get('curlFreq', 60.0))
+hair_verts_np, hair_quads, hair_uvs = build_hair(scalp_triangles, head_points, HAIR_PARAMS, seed=sum(ord(c) for c in CUSTOMER['id']))
+# A thin cap over the root area, so no skin shows between the ribbons; the strands lie 1.5 mm or more above it.
+cap_index = {}
+cap_points = []
+cap_faces = []
+for poly in roots_area:
+    face = []
+    for i in poly.vertices:
+        if i not in cap_index:
+            cap_index[i] = len(cap_points)
+            cap_points.append(co[i] + np.array(body.data.vertices[i].normal[:]) * 0.0025)
+        face.append(cap_index[i])
+    cap_faces.append(face)
+base = len(hair_verts_np)
+hair_verts_np = np.concatenate([hair_verts_np, np.array(cap_points)])
+hair_faces = [list(q) for q in hair_quads] + [[base + i for i in face] for face in cap_faces]
+hair_uvs = np.concatenate([hair_uvs, np.tile([0.5, 0.99], (len(cap_points), 1))])
+print('hair ribbons', len(hair_quads) // 8, 'vertices', len(hair_verts_np), 'scalp triangles', len(scalp_triangles))
 
-
-def in_fringe(v):
-    return abs(v.co.x) < FRINGE['x'] and v.co.y < FRINGE['y'] and v.co.z < FRINGE['z']
-
-
-hair_verts = {v for f in bm.faces if f.material_index == HAIR_SLOT for v in f.verts}
-for v in hair_verts:
-    v.co.z = max(v.co.z, HAIR_MIN_Z)            # shorter: the lower ends of the strands are pulled up to the cut height
-bad = [f for f in bm.faces if f.material_index == HAIR_SLOT and (all(in_fringe(v) for v in f.verts) or any(v.co.y < FACE_FRONT_Y and v.co.z < FACE_FRONT_Z for v in f.verts))]
-bmesh.ops.delete(bm, geom=bad, context='FACES_ONLY')
-print('hair faces cut', len(bad))
-
+bm = bmesh.new()
+bm.from_mesh(body.data)
+bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index == HAIR_SLOT], context='FACES')
 # --- sweater: a copy of the torso and arm skin, lifted off the skin -------------------------------------------------------------------
 deform = bm.verts.layers.deform.active
 names = {g.index: g.name for g in body.vertex_groups}
@@ -152,7 +170,7 @@ bm.free()
 
 # Hair and sweater become their own objects, skinned to the same skeleton.
 parts = {}
-for slot, label in ((HAIR_SLOT, 'Hair'), (CLOTH_SLOT, 'Cloth')):
+for slot, label in ((CLOTH_SLOT, 'Cloth'),):
     select_only(body)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
@@ -164,6 +182,15 @@ for slot, label in ((HAIR_SLOT, 'Hair'), (CLOTH_SLOT, 'Cloth')):
     part = (set(bpy.data.objects) - before).pop()
     part.name = part.data.name = label
     parts[label] = part
+
+# The hair object: ribbons weighted completely to the head bone.
+hair_mesh = bpy.data.meshes.new('Hair')
+hair_mesh.from_pydata([tuple(v) for v in hair_verts_np], [], [tuple(f) for f in hair_faces])
+hair_mesh.uv_layers.new(name='UVMap').data.foreach_set('uv', hair_uvs[[i for f in hair_faces for i in f]].ravel())
+hair_obj = bpy.data.objects.new('Hair', hair_mesh)
+bpy.context.scene.collection.objects.link(hair_obj)
+hair_obj.vertex_groups.new(name='head').add(list(range(len(hair_verts_np))), 1.0, 'REPLACE')
+parts['Hair'] = hair_obj
 print('separated', {k: len(p.data.vertices) for k, p in parts.items()})
 
 # --- bones: keep the ones that carry weight; at most 4 influences per vertex, as glTF ------------------------------------

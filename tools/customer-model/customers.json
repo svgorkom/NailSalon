@@ -1,11 +1,178 @@
 {
-  "_comment": "Adult customers of the salon game. body: MPFB macro values (age 0.5 = 25 years, 0.7 = about 50; race values add up to 1). skin: base colour the app tints the Skin material to. Colours: hair, cloth and eyes are sRGB hex.",
+  "_comment": "Adult customers of the salon game. body: MPFB macro values (age 0.5 = 25 years, 0.7 = about 50; race values add up to 1). skin: base colour the app tints the Skin material to. Colours: hair, cloth and eyes are sRGB hex. hair: cutZ = end height of the hair (metres for the first customer, scaled to the body), volume 0-1, parting -1..1 (side the front hair sweeps to), curl 0-1 and curlFreq (waves per metre), count = strands.",
   "customers": [
-    { "id": "emma", "name": "Emma", "skin": "#e9b9a0", "body": { "age": 0.5, "weight": 0.4, "muscle": 0.4, "height": 0.5, "cupsize": 0.5, "race": { "asian": 0, "caucasian": 1, "african": 0 } }, "hair": { "colour": "#4d2b14", "cutZ": 1.40 }, "eyes": "#5c7c96", "lips": "#c47076", "cloth": "#297391", "about": "Studeert, houdt van pastelkleuren en kleine steentjes." },
-    { "id": "fatima", "name": "Fatima", "skin": "#5e3a26", "body": { "age": 0.52, "weight": 0.45, "muscle": 0.45, "height": 0.55, "cupsize": 0.55, "race": { "asian": 0, "caucasian": 0, "african": 1 } }, "hair": { "colour": "#120a06", "cutZ": 1.40 }, "eyes": "#3b2416", "lips": "#8a4048", "cloth": "#c9922b", "about": "Werkt in een bakkerij, wil opvallende kleuren en glitter." },
-    { "id": "mei", "name": "Mei", "skin": "#d9a07c", "body": { "age": 0.47, "weight": 0.3, "muscle": 0.35, "height": 0.4, "cupsize": 0.4, "race": { "asian": 1, "caucasian": 0, "african": 0 } }, "hair": { "colour": "#0f0b0a", "cutZ": 1.445 }, "eyes": "#33241a", "lips": "#b9606a", "cloth": "#b5303a", "about": "Houdt van strakke, nette nagels en een paar kleine stickers." },
-    { "id": "ria", "name": "Ria", "skin": "#f3cdb6", "body": { "age": 0.72, "weight": 0.5, "muscle": 0.3, "height": 0.45, "cupsize": 0.55, "race": { "asian": 0, "caucasian": 1, "african": 0 } }, "hair": { "colour": "#a8a49c", "cutZ": 1.425 }, "eyes": "#6f8a94", "lips": "#b88086", "cloth": "#4d7a54", "about": "Gaat dansen met vriendinnen, wil iets feestelijks maar niet te druk." },
-    { "id": "lotte", "name": "Lotte", "skin": "#f3cdb6", "body": { "age": 0.45, "weight": 0.35, "muscle": 0.4, "height": 0.55, "cupsize": 0.45, "race": { "asian": 0, "caucasian": 1, "african": 0 } }, "hair": { "colour": "#9a3f17", "cutZ": 1.40 }, "eyes": "#4f7a58", "lips": "#cf7a78", "cloth": "#3a5fa8", "about": "Heeft sproeten, houdt van kleurrijke, speelse nagels." },
-    { "id": "noor", "name": "Noor", "skin": "#b9805a", "body": { "age": 0.55, "weight": 0.4, "muscle": 0.4, "height": 0.5, "cupsize": 0.5, "race": { "asian": 0.3, "caucasian": 0.3, "african": 0.4 } }, "hair": { "colour": "#241209", "cutZ": 1.415 }, "eyes": "#4a3020", "lips": "#a8585e", "cloth": "#6b3f94", "about": "Gaat naar een bruiloft en wil iets elegants met goud of parels." }
+    {
+      "id": "emma",
+      "name": "Emma",
+      "skin": "#e9b9a0",
+      "body": {
+        "age": 0.5,
+        "weight": 0.4,
+        "muscle": 0.4,
+        "height": 0.5,
+        "cupsize": 0.5,
+        "race": {
+          "asian": 0,
+          "caucasian": 1,
+          "african": 0
+        }
+      },
+      "hair": {
+        "colour": "#4d2b14",
+        "cutZ": 1.405,
+        "volume": 0.5,
+        "parting": 0.3,
+        "curl": 0.0
+      },
+      "eyes": "#5c7c96",
+      "lips": "#c47076",
+      "cloth": "#297391",
+      "about": "Studeert, houdt van pastelkleuren en kleine steentjes."
+    },
+    {
+      "id": "fatima",
+      "name": "Fatima",
+      "skin": "#5e3a26",
+      "body": {
+        "age": 0.52,
+        "weight": 0.45,
+        "muscle": 0.45,
+        "height": 0.55,
+        "cupsize": 0.55,
+        "race": {
+          "asian": 0,
+          "caucasian": 0,
+          "african": 1
+        }
+      },
+      "hair": {
+        "colour": "#120a06",
+        "cutZ": 1.5,
+        "volume": 1.0,
+        "parting": 0.0,
+        "curl": 0.9,
+        "curlFreq": 140,
+        "count": 1000
+      },
+      "eyes": "#3b2416",
+      "lips": "#8a4048",
+      "cloth": "#c9922b",
+      "about": "Werkt in een bakkerij, wil opvallende kleuren en glitter."
+    },
+    {
+      "id": "mei",
+      "name": "Mei",
+      "skin": "#d9a07c",
+      "body": {
+        "age": 0.47,
+        "weight": 0.3,
+        "muscle": 0.35,
+        "height": 0.4,
+        "cupsize": 0.4,
+        "race": {
+          "asian": 1,
+          "caucasian": 0,
+          "african": 0
+        }
+      },
+      "hair": {
+        "colour": "#0f0b0a",
+        "cutZ": 1.445,
+        "volume": 0.3,
+        "parting": 0.0,
+        "curl": 0.0
+      },
+      "eyes": "#33241a",
+      "lips": "#b9606a",
+      "cloth": "#b5303a",
+      "about": "Houdt van strakke, nette nagels en een paar kleine stickers."
+    },
+    {
+      "id": "ria",
+      "name": "Ria",
+      "skin": "#f3cdb6",
+      "body": {
+        "age": 0.72,
+        "weight": 0.5,
+        "muscle": 0.3,
+        "height": 0.45,
+        "cupsize": 0.55,
+        "race": {
+          "asian": 0,
+          "caucasian": 1,
+          "african": 0
+        }
+      },
+      "hair": {
+        "colour": "#a8a49c",
+        "cutZ": 1.43,
+        "volume": 0.8,
+        "parting": -0.3,
+        "curl": 0.25,
+        "curlFreq": 45
+      },
+      "eyes": "#6f8a94",
+      "lips": "#b88086",
+      "cloth": "#4d7a54",
+      "about": "Gaat dansen met vriendinnen, wil iets feestelijks maar niet te druk."
+    },
+    {
+      "id": "lotte",
+      "name": "Lotte",
+      "skin": "#f3cdb6",
+      "body": {
+        "age": 0.45,
+        "weight": 0.35,
+        "muscle": 0.4,
+        "height": 0.55,
+        "cupsize": 0.45,
+        "race": {
+          "asian": 0,
+          "caucasian": 1,
+          "african": 0
+        }
+      },
+      "hair": {
+        "colour": "#9a3f17",
+        "cutZ": 1.4,
+        "volume": 0.6,
+        "parting": -0.2,
+        "curl": 0.3,
+        "curlFreq": 35
+      },
+      "eyes": "#4f7a58",
+      "lips": "#cf7a78",
+      "cloth": "#3a5fa8",
+      "about": "Heeft sproeten, houdt van kleurrijke, speelse nagels."
+    },
+    {
+      "id": "noor",
+      "name": "Noor",
+      "skin": "#b9805a",
+      "body": {
+        "age": 0.55,
+        "weight": 0.4,
+        "muscle": 0.4,
+        "height": 0.5,
+        "cupsize": 0.5,
+        "race": {
+          "asian": 0.3,
+          "caucasian": 0.3,
+          "african": 0.4
+        }
+      },
+      "hair": {
+        "colour": "#241209",
+        "cutZ": 1.415,
+        "volume": 0.7,
+        "parting": 0.35,
+        "curl": 0.35,
+        "curlFreq": 40
+      },
+      "eyes": "#4a3020",
+      "lips": "#a8585e",
+      "cloth": "#6b3f94",
+      "about": "Gaat naar een bruiloft en wil iets elegants met goud of parels."
+    }
   ]
 }

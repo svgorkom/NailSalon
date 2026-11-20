@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import CUSTOMER, linear, WORK
+from hair import strand_texture
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
@@ -187,14 +188,41 @@ features.name = 'Features'
 for index, slot in enumerate(body.material_slots):
     if slot.material.name in ('Lashes', 'Teeth', 'Tongue'):
         slot.material = features
-# Hair and the sweater: a plain colour each.
-for obj, name, colour, rough in ((hair, 'Hair', HAIR_COLOUR, 0.55), (cloth, 'Cloth', CLOTH_COLOUR, 0.85)):
-    obj.data.materials.clear()
-    mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-    mat.use_nodes = True
-    flat(mat, colour, rough)
-    obj.data.materials.append(mat)
-    mat.use_backface_culling = False
+# The sweater: a plain colour.
+cloth.data.materials.clear()
+mat = bpy.data.materials.get('Cloth') or bpy.data.materials.new('Cloth')
+mat.use_nodes = True
+flat(mat, CLOTH_COLOUR, 0.85)
+cloth.data.materials.append(mat)
+mat.use_backface_culling = False
+
+# The hair: ribbons with a texture that cuts thin hairs out of each (alpha), tinted with the hair colour. The exporter writes the alpha
+# as BLEND; `mask_hair_material` below changes that to MASK, which needs no sorting.
+from PIL import Image
+hair.data.materials.clear()
+hair_mat = bpy.data.materials.get('Hair') or bpy.data.materials.new('Hair')
+hair_mat.use_nodes = True
+tree = hair_mat.node_tree
+tree.nodes.clear()
+Image.fromarray(strand_texture(seed=sum(ord(c) for c in CUSTOMER['id']))).save(f'{WORK}/hair_strands.png')
+strands = bpy.data.images.load(f'{WORK}/hair_strands.png')
+strands.colorspace_settings.name = 'sRGB'
+tex = tree.nodes.new('ShaderNodeTexImage')
+tex.image = strands
+tint = tree.nodes.new('ShaderNodeMix')
+tint.data_type = 'RGBA'
+tint.blend_type = 'MULTIPLY'
+tint.inputs['Factor'].default_value = 1.0
+tint.inputs['B'].default_value = HAIR_COLOUR
+bsdf = tree.nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Roughness'].default_value = 0.5
+out = tree.nodes.new('ShaderNodeOutputMaterial')
+tree.links.new(tex.outputs['Color'], tint.inputs['A'])
+tree.links.new(tint.outputs['Result'], bsdf.inputs['Base Color'])
+tree.links.new(tex.outputs['Alpha'], bsdf.inputs['Alpha'])
+tree.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+hair_mat.use_backface_culling = False
+hair.data.materials.append(hair_mat)
 
 bpy.ops.wm.save_as_mainfile(filepath=f'{WORK}/customer_final.blend')
 
@@ -207,4 +235,26 @@ bpy.ops.export_scene.gltf(
     export_skins=True, export_animations=False, export_extras=True, export_cameras=False, export_lights=False,
     export_image_format='JPEG', export_jpeg_quality=85, export_texcoords=True, export_normals=True, export_tangents=False,
     export_materials='EXPORT')
+def mask_hair_material(path):
+    """Rewrites the JSON of the .glb so the material `Hair` is alpha-tested (MASK, cutoff 0.5) and double sided."""
+    import json
+    import struct
+    data = open(path, 'rb').read()
+    json_length = struct.unpack('<I', data[12:16])[0]
+    gltf = json.loads(data[20:20 + json_length])
+    rest = data[20 + json_length:]
+    for material in gltf['materials']:
+        if material['name'] == 'Hair':
+            material['alphaMode'] = 'MASK'
+            material['alphaCutoff'] = 0.5
+            material['doubleSided'] = True
+    text = json.dumps(gltf, separators=(',', ':')).encode('utf-8')
+    text += b' ' * (-len(text) % 4)
+    total = 12 + 8 + len(text) + len(rest)
+    with open(path, 'wb') as file:
+        file.write(data[:8] + struct.pack('<I', total) + struct.pack('<I', len(text)) + b'JSON' + text + rest)
+
+
+mask_hair_material(OUT)
 print('exported', OUT)
+
