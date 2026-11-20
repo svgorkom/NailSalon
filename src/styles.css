@@ -1709,3 +1709,8 @@ fieldset.bare {
   width: 2.5rem;
   height: 2.5rem;
 }
+
+/* Proof page of the salon game (/#/proto). */
+.proto { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
+.proto-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.5rem; }
+.proto-scene { min-height: 0; }
