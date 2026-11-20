@@ -119,3 +119,14 @@ Six customers, `public/assets/customers/<id>.glb` (emma, fatima, mei, ria, lotte
 - `Editor` takes an optional `salon` (customer, wish, `onDone`). Same tools as the free mode; in the game the skin settings, the designs menu (save and open) and the AI tab are hidden, and the scene is `ModelScene part="customer"` with `Salon` (table, towel, wall, lamp; `src/scene/Salon.tsx`) as children, orbit limited to a small turn, no panning (`limited`), and the customer sliding in (`enter`).
 - Camera presets in `src/scene/salonViews.ts` (Salon, Dichtbij); the camera glides between them (`view`).
 - The wish is a fixed test text (`TEST_WISH`); "Klaar" shows a thank-you screen and "Volgende klant". Scoring and real wishes come with phase 4 (PR #33).
+
+## Salon game: wishes and scoring (`src/core/game`)
+
+The salon game lets customers ask for a design that the player must make. The plan is in the NailSalon project (`game-plan.md`); this is the part that is built.
+
+- **Requirements are measurable.** A `Wish` is a part (`hand` or `foot`), a difficulty (1-5) and a list of `Requirement`s about the fields of a `Design`: colour family, finish, shape, length range, French tip, and the number of stickers or gems (optionally of given kinds). Each is about every nail (`'all'`) or one finger or toe. Free drawing and sponge work cannot be measured and are never required; using them only sets `creative` in the result.
+- **Colour families** (`classifyColor`) come from lightness, saturation and hue: black, white, grey, then red, orange, yellow, green, blue, purple, pink and brown by hue. Gold and silver are yellow or grey plus a metallic finish, so they are two requirements.
+- **Scoring** (`scoreWish`): every requirement gives 0 to 1, the mean over its nails. A colour in a neighbouring family gives 0.5; a length falls to 0 at 15% of the longest length outside its range; every sticker or gem too few or too many costs half. A requirement about one nail weighs 1.5, one about all nails 1. Stars: 3 from 0.9, 2 from 0.7, 1 from 0.4, otherwise 0.
+- **Generating** (`generateWish(seed, part, difficulty)`) is deterministic. It never combines two requirements of the same kind on overlapping nails, and `validateWish` rejects them. Toe wishes use only toenail shapes and lengths.
+- **Test oracle**: `tests/core/game/solve.ts` builds a design that meets any wish; the tests check that it scores 1 for 300 seeds, both parts and every difficulty, so every generated wish can be met.
+- The Dutch wish text belongs in the UI, not in core.
