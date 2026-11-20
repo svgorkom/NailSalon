@@ -8,7 +8,7 @@ import math
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import WORK
+from config import CUSTOMER, WORK
 import bpy
 import bmesh
 import numpy as np
@@ -18,15 +18,18 @@ from mpfb_boot import boot
 boot()
 bpy.ops.wm.open_mainfile(filepath=f'{WORK}/human.blend')
 
-CUT_Z = 0.86                     # metres; below this (standing human) the body is hidden under the table
+# The heights below were measured on the first customer (1.637 m, hair included); they are scaled to the height of this one.
+REFERENCE_HEIGHT = 1.637
+SCALE_Z = bpy.data.objects['Human'].dimensions.z / REFERENCE_HEIGHT
+CUT_Z = 0.86 * SCALE_Z           # metres; below this (standing human) the body is hidden under the table
 HEAD_PITCH_DEG = 14.0            # looking down at the hand
-HAIR_MIN_Z = 1.40                # the hair of the MPFB helper is waist long; cut it at the neck (standing human, metres)
-FRINGE = dict(x=0.085, y=-0.065, z=1.58)   # no hair in front of the face: the helper has a fringe over the eyes
-FACE_FRONT_Y, FACE_FRONT_Z = -0.06, 1.52     # no strand ends in front of the cheeks, chin or mouth
+HAIR_MIN_Z = CUSTOMER['hair']['cutZ'] * SCALE_Z               # the hair of the MPFB helper is waist long; cut it at the neck (standing human, metres)
+FRINGE = dict(x=0.085, y=-0.065, z=1.58 * SCALE_Z)   # no hair in front of the face: the helper has a fringe over the eyes
+FACE_FRONT_Y, FACE_FRONT_Z = -0.06, 1.52 * SCALE_Z     # no strand ends in front of the cheeks, chin or mouth
 CLOTH_OFFSET = 0.007             # the sweater lies this far above the skin
 CLOTH_THICKNESS = 0.004
 CLOTH_BONES = ('spine', 'clavicle', 'shoulder01', 'upperarm', 'lowerarm', 'breast')
-CLOTH_MAX_Z = 1.335              # the neckline of the sweater, in standing coordinates
+CLOTH_MAX_Z = 1.335 * SCALE_Z              # the neckline of the sweater, in standing coordinates
 CLOTH_SMOOTHING = 4              # rounds the shape of the torso so the sweater is loose, not skin tight
 # Directions in Blender axes of the standing human: the front is -Y, the customer's right is -X, up is +Z.
 UPPER_ARM = Vector((-0.12, -0.33, -0.93)).normalized()       # shoulder to elbow: down and a little forward
@@ -64,7 +67,9 @@ LASHES = members('helper-l-eyelashes-1') | members('helper-l-eyelashes-2') | mem
 TEETH = members('helper-upper-teeth') | members('helper-lower-teeth')
 TONGUE = members('helper-tongue')
 HAIR = members('helper-hair')
-SKIN = {v.index for v in body.data.vertices if v.co.z > CUT_Z} & members('body')
+# Hands and forearms are always kept: in the standing pose of the helper skeleton they hang close to the cut, and a smaller body would lose fingers.
+HAND_GROUPS = [index for name, index in groups.items() if name.startswith(('wrist', 'metacarpal', 'finger', 'lowerarm'))]
+SKIN = {v.index for v in body.data.vertices if v.co.z > CUT_Z or any(g.group in HAND_GROUPS and g.weight > 0.5 for g in v.groups)} & members('body')
 KEEP = SKIN | EYES | LASHES | TEETH | TONGUE | HAIR
 SLOTS = [('Skin', SKIN), ('Eyes', EYES), ('Lashes', LASHES), ('Teeth', TEETH), ('Tongue', TONGUE), ('Hair', HAIR)]
 print('kept', len(KEEP), {name: len(s) for name, s in SLOTS})

@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import WORK
+from config import CUSTOMER, WORK
 import bpy
 from mpfb_boot import boot
 
@@ -11,8 +11,9 @@ from bl_ext.user_default.mpfb.services.humanservice import HumanService
 from bl_ext.user_default.mpfb.services.targetservice import TargetService
 
 macro = TargetService.get_default_macro_info_dict()
-macro.update({'gender': 0.0, 'age': 0.5, 'muscle': 0.4, 'weight': 0.4, 'proportions': 0.5, 'height': 0.5, 'cupsize': 0.5, 'firmness': 0.5})
-macro['race'] = {'asian': 0.0, 'caucasian': 1.0, 'african': 0.0}
+macro.update({'gender': 0.0, 'proportions': 0.5, 'firmness': 0.5})
+macro.update({key: CUSTOMER['body'][key] for key in ('age', 'muscle', 'weight', 'height', 'cupsize')})
+macro['race'] = dict(CUSTOMER['body']['race'])
 
 body = HumanService.create_human(mask_helpers=False, detailed_helpers=True, extra_vertex_groups=True, feet_on_ground=True, scale=0.1, macro_detail_dict=macro)
 rig = HumanService.add_builtin_rig(body, 'default', import_weights=True)

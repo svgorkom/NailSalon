@@ -12,14 +12,14 @@ from PIL import Image
 from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import WORK
+from config import CUSTOMER, srgb, WORK
 
 SIZE = 2048
 TARGET_AVERAGE = np.array([219.0, 163.0, 136.0])   # #dba388, average of the hand texture
 NAIL_COLOUR = np.array([227.0, 169.0, 157.0])      # nail colour in the hand texture
-LIP_COLOUR = np.array([196.0, 112.0, 118.0])
-BROW_COLOUR = np.array([84.0, 58.0, 42.0])
-IRIS_COLOUR = np.array([92.0, 124.0, 150.0])       # blue-grey
+LIP_COLOUR = np.array(srgb(CUSTOMER['lips']))
+BROW_COLOUR = np.array(srgb(CUSTOMER['hair']['colour'])) * 0.9 + 12.0   # a little lighter than the hair
+IRIS_COLOUR = np.array(srgb(CUSTOMER['eyes']))
 SCLERA = np.array([238.0, 236.0, 230.0])
 TEETH = np.array([232.0, 226.0, 210.0])
 TONGUE = np.array([196.0, 98.0, 104.0])

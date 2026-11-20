@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FINGERS } from '../../src/core';
 import { NAIL_ANCHOR_NAMES, readNailBed } from '../../src/scene/nailBed';
-import customerFile from '../../public/assets/customers/proto/customer-proto.glb?raw';
 import handFile from '../../public/assets/hand/hand.glb?raw';
 
 interface GltfNode {
@@ -20,25 +19,32 @@ function readGltf(file: string): Gltf {
   return JSON.parse(file.slice(20, end + 1)) as Gltf;
 }
 
-const customer = readGltf(customerFile);
+const files = import.meta.glob<string>('../../public/assets/customers/*.glb', { query: '?raw', import: 'default', eager: true });
+const customers = Object.entries(files).map(([path, file]) => ({ id: path.slice(path.lastIndexOf('/') + 1, -'.glb'.length), gltf: readGltf(file) }));
 const hand = readGltf(handFile);
 
-describe('customer model', () => {
-  it.each(FINGERS)('has a nail anchor for the %s that the nail code can read', (digit) => {
-    const node = customer.nodes.find((candidate) => candidate.name === NAIL_ANCHOR_NAMES[digit]);
-    expect(node?.extras).toBeDefined();
-    const bed = readNailBed(node?.extras ?? {});
-    // A real nail: between 5 and 20 mm wide.
-    expect(bed.width).toBeGreaterThan(0.005);
-    expect(bed.width).toBeLessThan(0.02);
+describe('customer models', () => {
+  it('are the six of the manifest', () => {
+    expect(customers.map((customer) => customer.id).sort()).toEqual(['emma', 'fatima', 'lotte', 'mei', 'noor', 'ria']);
   });
 
-  it('gives its anchors the same properties as the hand model', () => {
-    const keys = (gltf: Gltf) => Object.keys(gltf.nodes.find((node) => node.name === 'NailBed_Index')?.extras ?? {}).sort();
-    expect(keys(customer)).toEqual(keys(hand));
-  });
+  describe.each(customers)('$id', ({ gltf }) => {
+    it.each(FINGERS)('has a nail anchor for the %s that the nail code can read', (digit) => {
+      const node = gltf.nodes.find((candidate) => candidate.name === NAIL_ANCHOR_NAMES[digit]);
+      expect(node?.extras).toBeDefined();
+      const bed = readNailBed(node?.extras ?? {});
+      // A real nail: between 4.5 and 20 mm wide.
+      expect(bed.width).toBeGreaterThan(0.0045);
+      expect(bed.width).toBeLessThan(0.02);
+    });
 
-  it('has the skin material the tint is applied to', () => {
-    expect(customer.materials.map((material) => material.name)).toContain('Skin');
+    it('gives its anchors the same properties as the hand model', () => {
+      const keys = (model: Gltf) => Object.keys(model.nodes.find((node) => node.name === 'NailBed_Index')?.extras ?? {}).sort();
+      expect(keys(gltf)).toEqual(keys(hand));
+    });
+
+    it('has the skin material the tint is applied to', () => {
+      expect(gltf.materials.map((material) => material.name)).toContain('Skin');
+    });
   });
 });

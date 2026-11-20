@@ -1,8 +1,8 @@
 # Customer model
 
-Generates `public/assets/customers/proto/customer-proto.glb`: one seated customer of the salon game, from the head to the table, as **one skinned mesh**,
+Generates the seated customers of the salon game (`public/assets/customers/<id>.glb` and `manifest.json`), each from the head to the table, as **one skinned mesh**,
 so the hand is the end of her own arm and there is no seam at the wrist. Same MPFB body settings as `hand.glb` and `foot.glb`
-(female, Caucasian, age 0.5, muscle and weight 0.4). This is the proof of the plan's phase 1; see *Customer model* in
+(female, adult). The customers are defined in `customers.json` (body macros incl. race, skin tint, hair colour and length, eye, lip and sweater colour, one line about her). See *Customer model* in
 [`docs/plans/Design.md`](../../docs/plans/Design.md).
 
 ## Setup
@@ -13,7 +13,7 @@ Same as [`tools/foot-model`](../foot-model/README.md): Python 3.13 with `pip ins
 
 ## Run
 
-`./build.sh` runs everything; or run the steps in order from this folder with `python -I`:
+`./build.sh` builds all customers (about 40 s each) and writes the manifest; `./build.sh mei` builds one. Or run the steps for one customer yourself (`CUSTOMER=mei`, intermediate files in `work/mei/`), in order from this folder with `python -I`, then `python -I manifest.py`:
 
 | Step | Script | Result in `work/` |
 |---|---|---|
@@ -22,7 +22,7 @@ Same as [`tools/foot-model`](../foot-model/README.md): Python 3.13 with `pip ins
 | 3 | `03_subdivide.py` | subdivision: body level 1, sweater level 1 with 4 mm thickness |
 | 4 | `04_bake_input.py` | input of the texture step |
 | 5 | `05_textures.py` | 2048² colour, normal and roughness textures (skin, lips, nails, eyes, brows, pores) |
-| 6 | `06_export.py [OUT.glb]` | `customer.glb`: materials `Skin`, `Features`, `Hair`, `Cloth`, nail anchors, export |
+| 6 | `06_export.py [OUT.glb]` | `customer.glb`: materials `Skin`, `Features`, `Hair`, `Cloth`, nail anchors, export (`build.sh` puts it in `public/assets/customers/<id>.glb`) |
 
 Check with `python -I ../foot-model/verify.py work/customer.glb Customer` (the last argument is the mesh whose skin the anchors are measured against)
 and look with `render_blend.py` (quick, Workbench) or `render_preview.py` (Cycles).
@@ -32,4 +32,6 @@ and look with `render_blend.py` (quick, Workbench) or `render_preview.py` (Cycle
 - Origin on the table top under the right wrist, the customer behind it facing +z, y up (metres, glTF axes). The player looks from +z.
 - Anchors `NailBed_Thumb|Index|Middle|Ring|Pinky` with the same axes and `extras` as `hand.glb` (checked by `tests/scene/customerModel.test.ts`).
 - Material `Skin` is the one the app tints; keep the other materials flat or textured separately.
-- Budget: file ≤ 6 MB.
+- Budget: file ≤ 6 MB (checked by `tests/scene/customerManifest.test.ts`).
+- Heights in `02_cut_and_pose.py` are scaled to the body height (`REFERENCE_HEIGHT`); hands and forearms are always kept in the cut. Add a customer by adding an entry to `customers.json` and building it; check the printed nail normal (about 0.27, -0.56, 0.78).
+- Every model is about 4.7 MB and a rebuild of all six adds about 28 MB to the git history: rebuild only when the model changes.

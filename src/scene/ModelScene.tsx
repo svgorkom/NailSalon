@@ -1,7 +1,7 @@
 import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, createPortal, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef } from 'react';
-import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Vector3 } from 'three';
+import { type BufferGeometry, CanvasTexture, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Texture, Vector3 } from 'three';
 import { type Design, type Digit, FINGERS, type Finish, type Gem, type GemKind, type Nail, nailAt, TOES } from '../core';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
@@ -27,6 +27,8 @@ interface ModelSceneProps {
   /** Holds the texture of each nail: base colour, drawing and stickers. */
   readonly paint: NailPaint;
   readonly onSelect: (digit: Digit) => void;
+  /** The model file of a customer; needed for the part `customer`, ignored for the others. The previous customer is released when this changes. */
+  readonly modelUrl?: string;
   /** Where the camera stands and looks, in scene units; the camera glides there when it changes. Without it the part's own view stays. */
   readonly view?: CameraView;
   /** Rendered inside the canvas, for tools that need the renderer or the frame loop. */
@@ -40,7 +42,8 @@ export interface CameraView {
 }
 
 interface PartSetup {
-  readonly url: string;
+  /** Model file; a customer has none here because there are several (`modelUrl`). */
+  readonly url: string | null;
   readonly digits: readonly Digit[];
   readonly scale: number;
   /** Where the camera looks, in scene units (the model scaled). */
@@ -61,7 +64,7 @@ const SETUPS: Readonly<Record<ScenePart, PartSetup>> = {
   hand: { url: `${import.meta.env.BASE_URL}assets/hand/hand.glb`, digits: FINGERS, scale: 12, target: [0, 1, 0], pickDistance: 0.03, camera: [0, 1, 4.6], minDistance: 1.2, maxDistance: 9 },
   foot: { url: `${import.meta.env.BASE_URL}assets/foot/foot.glb`, digits: TOES, scale: 10, target: [0.07, 0.5, 0], pickDistance: 0.012, camera: [0.07, 0.5, 4.6], minDistance: 1.2, maxDistance: 9 },
   // In metres, origin on the table under the right wrist, the customer behind it facing +z; the player looks from +z.
-  customer: { url: `${import.meta.env.BASE_URL}assets/customers/proto/customer-proto.glb`, digits: FINGERS, scale: 1, target: [0.12, 0.25, 0], pickDistance: 0.025, camera: [0.12, 0.45, 1.2], minDistance: 0.15, maxDistance: 2.5 },
+  customer: { url: null, digits: FINGERS, scale: 1, target: [0.12, 0.25, 0], pickDistance: 0.025, camera: [0.12, 0.45, 1.2], minDistance: 0.15, maxDistance: 2.5 },
 };
 
 const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: number; clearcoat: number }>> = {
@@ -72,12 +75,14 @@ const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: n
   chrome: { roughness: 0.05, metalness: 1, clearcoat: 1 },
 };
 
-useGLTF.preload(SETUPS.hand.url);
-useGLTF.preload(SETUPS.foot.url);
-// The customer is not preloaded: only the hidden proof page loads it.
+useGLTF.preload(`${import.meta.env.BASE_URL}assets/hand/hand.glb`);
+useGLTF.preload(`${import.meta.env.BASE_URL}assets/foot/foot.glb`);
+// Customers are not preloaded: one is loaded at a time and released again.
 
-export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, view, children }: ModelSceneProps) {
+export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, modelUrl, view, children }: ModelSceneProps) {
   const setup = SETUPS[part];
+  const url = setup.url ?? modelUrl;
+  if (!url) throw new Error(`Part "${part}" needs a modelUrl.`);
   return (
     <Canvas key={part} frameloop="demand" dpr={[1, 2]} gl={{ alpha: true }} camera={{ position: [...setup.camera], fov: 40 }} data-testid={`${part}-scene`}>
       <ambientLight intensity={0.3} color={SCENE_LIGHT[theme].sky} />
@@ -87,7 +92,7 @@ export function ModelScene({ part, design, selected, theme, skin, paint, onSelec
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Body setup={setup} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
+      <Body setup={setup} url={url} release={setup.url === null} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
       <OrbitControls makeDefault zoomToCursor target={setup.target} minDistance={setup.minDistance} maxDistance={setup.maxDistance} />
       {view && <CameraGlide view={view} />}
       {children}
@@ -128,6 +133,9 @@ function CameraGlide({ view }: { readonly view: CameraView }) {
 
 interface BodyProps {
   readonly setup: PartSetup;
+  readonly url: string;
+  /** Dispose the model's GPU resources and forget it when it goes away: for models that are swapped. */
+  readonly release: boolean;
   readonly design: Design;
   readonly selected: Digit | null;
   readonly skin: string;
@@ -135,11 +143,28 @@ interface BodyProps {
   readonly onSelect: (digit: Digit) => void;
 }
 
-function Body({ setup, design, selected, skin, paint, onSelect }: BodyProps) {
-  const { scene } = useGLTF(setup.url);
+function Body({ setup, url, release, design, selected, skin, paint, onSelect }: BodyProps) {
+  const { scene } = useGLTF(url);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene, setup.digits), [scene, setup.digits]);
   const gemGeometries = useMemo(() => createGemGeometries(), []);
+
+  useEffect(() => {
+    if (!release) return undefined;
+    return () => {
+      scene.traverse((object) => {
+        if (!(object instanceof Mesh)) return;
+        object.geometry.dispose();
+        if (object instanceof SkinnedMesh) object.skeleton.dispose();
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          for (const value of Object.values(material)) if (value instanceof Texture) value.dispose();
+          material.dispose();
+        }
+      });
+      useGLTF.clear(url);
+    };
+  }, [scene, url, release]);
+
   useEffect(() => () => Object.values(gemGeometries).forEach((geometry) => geometry.dispose()), [gemGeometries]);
 
   useEffect(() => {

@@ -98,13 +98,15 @@ When the model is regenerated, keep these names and axes. In Blender's glTF expo
 - `ModelScene` shows the hand or the foot (`SETUPS` in `src/scene/ModelScene.tsx`: scale, camera target, pick distance).
 - No left/right switch for now; the left foot comes later by mirroring.
 
-## Customer model (salon game, proof)
+## Customer models (salon game)
 
-`public/assets/customers/proto/customer-proto.glb` (about 4.7 MB): a seated customer from the head down to the table, as one skinned mesh (`Customer`, about 43,000 vertices) next to `Cloth` (sweater, 4 mm thick) and `Hair`; about 62,000 vertices and 122,000 triangles in all, 100 joints. Metres, glTF Y-up. The origin is on the table top under the right wrist, the customer sits behind it facing +z and the player looks from +z. Her right hand lies palm down with the fingers towards the player; her left hand is in her lap, below table height, and the lower body is cut off under the table, so the game needs a table in front of it.
+Six customers, `public/assets/customers/<id>.glb` (emma, fatima, mei, ria, lotte, noor; about 4.7 MB each) listed in `manifest.json` (`id`, `name`, `file`, `bytes`, `skin`, `about`; read with `parseManifest`). Each: a seated customer from the head down to the table, as one skinned mesh (`Customer`, about 43,000 vertices) next to `Cloth` (sweater, 4 mm thick) and `Hair`; about 62,000 vertices and 122,000 triangles in all, 100 joints. Metres, glTF Y-up. The origin is on the table top under the right wrist, the customer sits behind it facing +z and the player looks from +z. Her right hand lies palm down with the fingers towards the player; her left hand is in her lap, below table height, and the lower body is cut off under the table, so the game needs a table in front of it.
 
 - One mesh from the face to the fingertips, so the hand is connected to her arm without a seam. The sweater ends in a cuff at the wrist.
 - Materials: `Skin` and `Features` share one set of 2048² procedural textures (skin, lips, nails, eyes, brows, pores); `Hair` and `Cloth` are flat colours. The app tints only the material named `Skin` (`ModelScene`).
 - `NailBed_Thumb|Index|Middle|Ring|Pinky` on the last finger bones, with the same axes and `extras` as the hand (`tests/scene/customerModel.test.ts` checks them). Fitted to the skin within 0.4-0.8 mm on average.
-- Hidden proof page: `/#/proto` (`src/ui/ProtoViewer.tsx`, not linked): views Salon, Close-up and Pols, and a 5-second measurement (fps, 95th percentile frame time, triangles, geometries, textures). `ModelScene` takes the part `customer` and an optional camera `view` it glides to.
+- Customers differ in age (22-55), body, face (MPFB race macros), skin (`skin` in the manifest is the tint to pass to the `Skin` material), hair colour and length, eyes, lips and sweater. Nail widths differ by up to 1.5 mm between customers (thumb 7.7-9.2 mm); the four most alike differ by 0.1 mm. All hair has the same shape.
+- One customer is loaded at a time: `ModelScene` takes `modelUrl` for the part `customer` and disposes geometry, textures, skeleton and the loader cache when it is swapped; 20 swaps on the proof page keep geometries + textures at 29.
+- Hidden proof page: `/#/proto` (`src/ui/ProtoViewer.tsx`, not linked): a button per customer, "Wissel 20×" (memory check), views Salon, Close-up and Pols, and a 5-second measurement (fps, 95th percentile frame time, triangles, geometries, textures). `ModelScene` takes the part `customer` and an optional camera `view` it glides to.
 - Known weaknesses: the hair is crude and bald at the temples; the hand texture is sharper on `hand.glb` because the torso takes atlas space here; the face is plausible but slightly uncanny; no facial reactions yet. fps on a laptop and the daughter's phone is still to be measured with the proof page.
-- Made with `tools/customer-model` (see its README).
+- Made with `tools/customer-model` from `customers.json` (see its README).

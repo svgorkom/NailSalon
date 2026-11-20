@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import WORK
+from config import CUSTOMER, linear, WORK
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
@@ -129,8 +129,8 @@ body.name = body.data.name = 'Customer'
 rig.name = rig.data.name = 'CustomerRig'
 
 # --- materials ----------------------------------------------------------------------------------------------------------------------------
-HAIR_COLOUR = (0.30, 0.17, 0.08, 1.0)
-CLOTH_COLOUR = (0.16, 0.45, 0.56, 1.0)
+HAIR_COLOUR = linear(CUSTOMER['hair']['colour'])
+CLOTH_COLOUR = linear(CUSTOMER['cloth'])
 
 
 def images():

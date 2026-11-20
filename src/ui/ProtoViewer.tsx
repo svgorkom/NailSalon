@@ -1,7 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber';
-import { Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Vector3 } from 'three';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type WebGLRenderer, Vector3 } from 'three';
 import { apply, createDesign, type Design } from '../core';
+import { type CustomerEntry, parseManifest } from '../scene/customerManifest';
 import { type CameraView, ModelScene } from '../scene/ModelScene';
 import { NailPaint } from '../scene/nailPaint';
 import { loadTheme } from './theme';
@@ -64,7 +65,65 @@ function Benchmark({ onDone }: { readonly onDone: (measurement: Measurement) => 
   return null;
 }
 
+/** Hands the renderer to the page, so it can read how many geometries and textures are in memory. */
+function RendererProbe({ rendererRef }: { readonly rendererRef: { current: WebGLRenderer | null } }) {
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    rendererRef.current = gl;
+    return () => {
+      rendererRef.current = null;
+    };
+  }, [gl, rendererRef]);
+  return null;
+}
+
+const SWITCHES = 20;
+const SWITCH_INTERVAL_MS = 2500;
+
 export function ProtoViewer() {
+  const [customers, setCustomers] = useState<readonly CustomerEntry[]>([]);
+  const [customerIndex, setCustomerIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [switching, setSwitching] = useState<number | null>(null);
+  const [switchResult, setSwitchResult] = useState<string | null>(null);
+  const rendererRef = useRef<WebGLRenderer | null>(null);
+  const baseline = useRef<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${import.meta.env.BASE_URL}assets/customers/manifest.json`)
+      .then((response) => response.json())
+      .then((json: unknown) => {
+        if (!cancelled) setCustomers(parseManifest(json));
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : 'Manifest niet te laden.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Switch test: change customer every few seconds and compare the memory of the renderer after the last switch with the first.
+  useEffect(() => {
+    if (switching === null || customers.length === 0) return undefined;
+    const timer = window.setTimeout(() => {
+      const memory = rendererRef.current?.info.memory;
+      if (memory && baseline.current === null) baseline.current = memory.geometries + memory.textures;
+      if (switching >= SWITCHES) {
+        const now = memory ? memory.geometries + memory.textures : 0;
+        setSwitchResult(`${SWITCHES} wissels: ${baseline.current} → ${now} (geometrieën + texturen)`);
+        baseline.current = null;
+        setSwitching(null);
+        return;
+      }
+      setCustomerIndex((index) => (index + 1) % customers.length);
+      setSwitching(switching + 1);
+    }, SWITCH_INTERVAL_MS);
+    return () => window.clearTimeout(timer);
+  }, [switching, customers.length]);
+
+  const customer = customers[customerIndex] ?? null;
   const [viewId, setViewId] = useState<ViewId>('salon');
   const [measuring, setMeasuring] = useState(false);
   const [measurement, setMeasurement] = useState<Measurement | null>(null);
@@ -90,6 +149,23 @@ export function ProtoViewer() {
         >
           {measuring ? 'Meten…' : `Meet ${BENCHMARK_SECONDS} s`}
         </button>
+        {customers.map((entry, index) => (
+          <button key={entry.id} type="button" aria-pressed={index === customerIndex} onClick={() => setCustomerIndex(index)}>
+            {entry.name}
+          </button>
+        ))}
+        <button
+          type="button"
+          disabled={switching !== null || customers.length === 0}
+          onClick={() => {
+            setSwitchResult(null);
+            setSwitching(0);
+          }}
+        >
+          {switching === null ? `Wissel ${SWITCHES}×` : `Wisselen ${switching}/${SWITCHES}…`}
+        </button>
+        {switchResult && <output>{switchResult}</output>}
+        {error && <output role="alert">{error}</output>}
         {measurement && (
           <output>
             {measurement.averageFps.toFixed(0)} fps, p95 {measurement.p95Ms.toFixed(1)} ms, {measurement.triangles.toLocaleString('nl-NL')} driehoeken, {measurement.geometries} geometrieën, {measurement.textures} texturen
@@ -97,18 +173,21 @@ export function ProtoViewer() {
         )}
       </div>
       <div className="proto-scene">
-        <Suspense fallback={<p>Laden…</p>}>
-          <ModelScene part="customer" design={design} selected={null} theme={loadTheme()} skin="#dba388" paint={paint} onSelect={() => undefined} view={VIEWS[viewId].view}>
-            {measuring && (
-              <Benchmark
-                onDone={(result) => {
-                  setMeasurement(result);
-                  setMeasuring(false);
-                }}
-              />
-            )}
-          </ModelScene>
-        </Suspense>
+        {customer && (
+          <Suspense fallback={<p>Laden…</p>}>
+            <ModelScene part="customer" modelUrl={`${import.meta.env.BASE_URL}assets/customers/${customer.file}`} design={design} selected={null} theme={loadTheme()} skin={customer.skin} paint={paint} onSelect={() => undefined} view={VIEWS[viewId].view}>
+              <RendererProbe rendererRef={rendererRef} />
+              {measuring && (
+                <Benchmark
+                  onDone={(result) => {
+                    setMeasurement(result);
+                    setMeasuring(false);
+                  }}
+                />
+              )}
+            </ModelScene>
+          </Suspense>
+        )}
       </div>
     </main>
   );
