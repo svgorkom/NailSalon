@@ -33,6 +33,6 @@ and look with `render_blend.py` (quick, Workbench) or `render_preview.py` (Cycle
 - Anchors `NailBed_Thumb|Index|Middle|Ring|Pinky` with the same axes and `extras` as `hand.glb` (checked by `tests/scene/customerModel.test.ts`).
 - Material `Skin` is the one the app tints; keep the other materials flat or textured separately.
 - Hair is made by `hair.py` (numpy only; the hair block in `02_cut_and_pose.py` feeds it the scalp and head vertices) and textured in `06_export.py`; `06_export.py` also rewrites the .glb JSON so the `Hair` material is alpha-tested.
-- Budget: file ≤ 6 MB (checked by `tests/scene/customerManifest.test.ts`).
+- Budget: file ≤ 2.5 MB (checked by `tests/scene/customerManifest.test.ts`). `build.sh` finishes each model with meshopt compression and 16-bit position quantization (`npx @gltf-transform/cli`, needs Node and network; about 2 MB instead of 5.8 MB). The app decodes it with the meshopt decoder bundled in three-stdlib (no extra script or request).
 - Heights in `02_cut_and_pose.py` are scaled to the body height (`REFERENCE_HEIGHT`); hands and forearms are always kept in the cut. Add a customer by adding an entry to `customers.json` and building it; check the printed nail normal (about 0.27, -0.56, 0.78).
-- Every model is about 4.7 MB and a rebuild of all six adds about 28 MB to the git history: rebuild only when the model changes.
+- Every model is about 2 MB and a rebuild of all six adds about 12 MB to the git history: rebuild only when the model changes.
