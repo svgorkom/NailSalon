@@ -1,5 +1,6 @@
-/** Light brown wood of the table and the footrest. */
-const WOOD_COLOR = '#d6b48c';
+/** Wood of the table and the footrest, and the light brown towel on it. */
+const WOOD_COLOR = '#b98a5e';
+const TOWEL_COLOR = '#e3cba8';
 
 /** The furniture around the customer, for a manicure (a table) or a pedicure (a chair and a footrest). Plain shapes and flat colours; lit by the lights of the scene. */
 export function Salon({ part }: { readonly part: 'hand' | 'foot' }) {
@@ -20,7 +21,7 @@ function ManicureSalon() {
       {/* Towel under the right hand. */}
       <mesh position={[0.0, 0.0015, 0.06]}>
         <boxGeometry args={[0.24, 0.003, 0.3]} />
-        <meshStandardMaterial color="#f6efe6" roughness={0.95} />
+        <meshStandardMaterial color={TOWEL_COLOR} roughness={0.95} />
       </mesh>
       {/* Wall behind the customer. */}
       <mesh position={[0.15, 0.6, -1.0]}>
@@ -61,7 +62,7 @@ function PedicureSalon() {
       </mesh>
       <mesh position={[0.02, -0.0015, 0.05]}>
         <boxGeometry args={[0.28, 0.003, 0.4]} />
-        <meshStandardMaterial color="#f6efe6" roughness={0.95} />
+        <meshStandardMaterial color={TOWEL_COLOR} roughness={0.95} />
       </mesh>
       {/* Chair: a seat under her, four legs and a low back. */}
       <mesh position={[CHAIR_X, SEAT_Y - 0.02, -0.55]}>
