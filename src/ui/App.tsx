@@ -126,6 +126,9 @@ export function App() {
                         wish={salon.wish}
                         result={salon.result}
                         best={salon.best}
+                        onSave={async () => {
+                          await repository.save(newId(), history.present, false);
+                        }}
                         onRetry={() => setSalon({ ...salon, result: null })}
                         onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(5, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
                       />
