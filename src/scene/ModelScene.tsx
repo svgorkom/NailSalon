@@ -108,7 +108,7 @@ export function ModelScene({ part, design, selected, theme, skin, paint, onSelec
         makeDefault
         zoomToCursor
         target={setup.target}
-        minDistance={limited ? 0.3 : setup.minDistance}
+        minDistance={limited ? 0.12 : setup.minDistance}
         maxDistance={limited ? 1.8 : setup.maxDistance}
         enablePan={!limited}
         minAzimuthAngle={limited ? -0.5 : -Infinity}
