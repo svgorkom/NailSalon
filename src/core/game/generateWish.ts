@@ -76,6 +76,20 @@ function makeAccent(random: Random, part: WishPart): Requirement {
   return makeRequirement(random, part, pickOne(random, DECORATION_KINDS), pickOne(random, partDigits(part)));
 }
 
+/**
+ * Decorations on `count` different nails, stickers and gems taking turns. With `combo` the first of those nails gets both a sticker and a gem.
+ * Requirements of one kind never share a nail, so these never clash with each other.
+ */
+function makeAccents(random: Random, part: WishPart, count: number, combo: boolean): Requirement[] {
+  const digits = pickDistinct(random, partDigits(part), count);
+  const offset = randomInt(random, 0, 1);
+  const accents = digits.map((digit, index) => makeRequirement(random, part, DECORATION_KINDS[(index + offset) % 2] ?? 'stickers', digit));
+  const first = digits[0];
+  if (!combo || first === undefined) return accents;
+  const other = DECORATION_KINDS[(offset + 1) % 2] ?? 'gems';
+  return [...accents, makeRequirement(random, part, other, first)];
+}
+
 function requirementsFor(random: Random, part: WishPart, difficulty: Difficulty): Requirement[] {
   const forAll = (kinds: readonly Kind[]) => kinds.map((kind) => makeRequirement(random, part, kind, 'all'));
   switch (difficulty) {
@@ -89,13 +103,19 @@ function requirementsFor(random: Random, part: WishPart, difficulty: Difficulty)
       return [...forAll(pickDistinct(random, BASE_KINDS, 2)), makeAccent(random, part)];
     case 5:
       return [...forAll([...pickDistinct(random, BASE_KINDS, 3), 'length']), makeAccent(random, part)];
+    case 6:
+      return [...forAll([...pickDistinct(random, BASE_KINDS, 3), 'length']), ...makeAccents(random, part, 2, false)];
+    case 7:
+      return [...forAll([...pickDistinct(random, BASE_KINDS, 3), 'length']), ...makeAccents(random, part, 3, true)];
   }
 }
 
 /**
  * A wish for a customer. The same seed, part and difficulty always give the same wish, so a day of customers can be repeated.
  * 1: one thing; 2: two things; 3: three things, decorations included; 4: two things and one decoration on a single nail;
- * 5: three things, a length and one decoration on a single nail.
+ * 5: three things, a length and one decoration on a single nail;
+ * 6: the same, with decorations on two different nails;
+ * 7: the same, with decorations on three different nails, one of them with a sticker and a gem together.
  */
 export function generateWish(seed: number, part: WishPart, difficulty: Difficulty): Wish {
   const wish: Wish = { part, difficulty, requirements: requirementsFor(createRandom(seed), part, difficulty) };
