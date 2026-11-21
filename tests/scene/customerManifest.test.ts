@@ -20,9 +20,9 @@ describe('parseManifest', () => {
     expect(() => parseManifest({ customers: [{ ...entry, bytes: 0 }] })).toThrow(TypeError);
   });
 
-  it('accepts the manifest of the repo: six customers, each within the 6 MB budget', () => {
+  it('accepts the manifest of the repo: six customers, each within the 2.5 MB budget', () => {
     const customers = parseManifest(manifestFile);
     expect(customers).toHaveLength(6);
-    for (const customer of customers) expect(customer.bytes).toBeLessThanOrEqual(6 * 1024 * 1024);
+    for (const customer of customers) expect(customer.bytes).toBeLessThanOrEqual(2.5 * 1024 * 1024);
   });
 });
