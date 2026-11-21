@@ -29,19 +29,19 @@ describe('salonEnabled', () => {
     vi.stubGlobal('localStorage', { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => void values.set(key, value) });
   });
 
-  it('is off by default', () => {
-    expect(salonEnabled('')).toBe(false);
-  });
-
-  it('is turned on by ?salon=1 and stays on for later visits', () => {
-    expect(salonEnabled('?salon=1')).toBe(true);
+  it('is on by default', () => {
     expect(salonEnabled('')).toBe(true);
   });
 
-  it('is turned off again by ?salon=0 and ignores other values', () => {
-    salonEnabled('?salon=1');
-    expect(salonEnabled('?salon=yes')).toBe(true);
+  it('is turned off by ?salon=0 and stays off for later visits', () => {
     expect(salonEnabled('?salon=0')).toBe(false);
     expect(salonEnabled('')).toBe(false);
+  });
+
+  it('is turned on again by ?salon=1 and ignores other values', () => {
+    salonEnabled('?salon=0');
+    expect(salonEnabled('?salon=no')).toBe(false);
+    expect(salonEnabled('?salon=1')).toBe(true);
+    expect(salonEnabled('')).toBe(true);
   });
 });
