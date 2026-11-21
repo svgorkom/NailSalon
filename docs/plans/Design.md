@@ -138,3 +138,9 @@ The salon game lets customers ask for a design that the player must make. The pl
 - The result screen offers "Ik pas het aan" (retry, best attempt kept) or "Volgende klant".
 - Difficulty goes up by one (max 5) after a round with at least 2 stars.
 - No coins, prices, unlocks or saved progress yet (decided with the owner).
+
+### Customer reactions (phase 6, behind `?salon=1`)
+
+- After **Klaar** the result is shown in the side panel and the camera glides to her face (`REACTION_VIEW`); she reacts with a head movement: 3 stars a double nod, 2 a nod, 1 a tilt, 0 a drooping head (`src/scene/customerMotion.ts`, pure and tested). While she waits she glances to a side now and then (every 5-9 seconds).
+- Only the `head` bone turns (about the axes of the model, whatever the axes of the bone), so the arm and the hand stay still. The model has no eyelid or face bones (eyes and mouth are texture/mesh), so no blinking or facial expressions; the mouth corners are raised in the model for a friendly default face.
+- The scene still renders on demand: frames are only requested while the head moves. The step of an animation frame is capped at 50 ms (`MAX_STEP`), because the clock keeps running while the scene sleeps and the first frame after a pause reports a huge delta (this also fixes the camera glide and the arrival).

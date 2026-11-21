@@ -1,9 +1,9 @@
-import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
-import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
+import { type Dispatch, type KeyboardEvent, lazy, type PointerEvent as ReactPointerEvent, type ReactNode, Suspense, useId, useLayoutEffect, useRef, useState } from 'react';
+import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINISHES, type FrenchTip, type GemKind, type History, MAX_LENGTH, type Nail, NAIL_SHAPES, nailAt, type Stars, type StickerKind, TOE_MAX_LENGTH, TOE_SHAPES, TOES } from '../core';
 import type { CustomerEntry } from '../scene/customerManifest';
 import { NailPaint } from '../scene/nailPaint';
 import { Salon } from '../scene/Salon';
-import { SALON_VIEWS, type SalonViewId } from '../scene/salonViews';
+import { REACTION_VIEW, SALON_VIEWS, type SalonViewId } from '../scene/salonViews';
 import type { AiDesigner } from '../data/aiDesigner';
 import type { DesignRepository } from '../data/designRepository';
 import { AiTools, type ChatLine } from './AiTools';
@@ -60,6 +60,8 @@ export interface SalonRound {
   readonly wish: string;
   readonly checklist: readonly string[];
   readonly onDone: () => void;
+  /** Set after "Klaar": the customer reacts to the stars and `panel` (the result) takes the place of the tools. */
+  readonly outcome?: { readonly stars: Stars; readonly panel: ReactNode };
 }
 
 interface EditorProps {
@@ -181,7 +183,8 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
               skin={salon.customer.skin}
               paint={paint}
               onSelect={setSelected}
-              view={SALON_VIEWS[salonView]}
+              view={salon.outcome ? REACTION_VIEW : SALON_VIEWS[salonView]}
+              {...(salon.outcome && { reaction: salon.outcome.stars })}
               limited
               enter
             >
@@ -205,6 +208,11 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
         onPointerUp={onResizeEnd}
         onKeyDown={onResizeKey}
       />
+      {salon?.outcome ? (
+        <aside className="tools panel salon-outcome" aria-label="Resultaat">
+          {salon.outcome.panel}
+        </aside>
+      ) : (
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="tools-head">
           {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} onDone={salon.onDone} />}
@@ -435,6 +443,7 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
           </details>
         </div>
       </aside>
+      )}
     </div>
   );
 }
