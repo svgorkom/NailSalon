@@ -15,7 +15,7 @@ describe('generating wishes', () => {
 
   it('asks for more as the difficulty goes up', () => {
     const sizes = DIFFICULTIES.map((difficulty) => generateWish(1, 'hand', difficulty).requirements.length);
-    expect(sizes).toEqual([1, 2, 3, 3, 5]);
+    expect(sizes).toEqual([1, 2, 3, 3, 5, 6, 8]);
   });
 
   it('asks for a decoration on a single nail at difficulty 4 and 5', () => {
@@ -24,6 +24,21 @@ describe('generating wishes', () => {
         const single = generateWish(seed, 'hand', difficulty).requirements.filter((requirement) => requirement.scope !== 'all');
         expect(single).toHaveLength(1);
         expect(['stickers', 'gems']).toContain(single[0]?.kind);
+      }
+    }
+  });
+
+  it('spreads decorations over different nails at difficulty 6 and 7, with a sticker and a gem together on one nail at 7', () => {
+    for (const part of PARTS) {
+      for (const seed of SEEDS) {
+        const decorations = (difficulty: 6 | 7) => generateWish(seed, part, difficulty).requirements.filter((requirement) => requirement.scope !== 'all');
+        const six = decorations(6);
+        expect(new Set(six.map((requirement) => requirement.scope)).size).toBe(2);
+        const seven = decorations(7);
+        expect(seven).toHaveLength(4);
+        expect(new Set(seven.map((requirement) => requirement.scope)).size).toBe(3);
+        const kinds = (scope: string) => seven.filter((requirement) => requirement.scope === scope).map((requirement) => requirement.kind).sort();
+        expect(seven.some((requirement) => kinds(requirement.scope).join() === 'gems,stickers')).toBe(true);
       }
     }
   });

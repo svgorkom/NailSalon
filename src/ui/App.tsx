@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { createDesign, createHistory, type Difficulty, generateWish, lengthLimit, scoreWish, type Stars, type Wish, type WishResult } from '../core';
+import { createDesign, createHistory, type Difficulty, generateWish, lengthLimit, MAX_DIFFICULTY, scoreWish, type Stars, type Wish, type WishResult } from '../core';
 import type { CustomerEntry } from '../scene/customerManifest';
 import { httpAiDesigner } from '../data/aiDesigner';
 import { httpDesignRepository } from '../data/designRepository';
@@ -131,7 +131,7 @@ export function App() {
                           await repository.save(newId(), history.present, false);
                         }}
                         onRetry={() => setSalon({ ...salon, result: null })}
-                        onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(5, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
+                        onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(MAX_DIFFICULTY, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
                       />
                     ),
                   },

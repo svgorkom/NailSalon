@@ -8,8 +8,11 @@ export type WishPart = 'hand' | 'foot';
 /** Which nails a requirement is about: every nail of the part, or one finger or toe. */
 export type NailScope = 'all' | Digit;
 
-export const DIFFICULTIES = [1, 2, 3, 4, 5] as const;
+export const DIFFICULTIES = [1, 2, 3, 4, 5, 6, 7] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
+
+/** The hardest difficulty. */
+export const MAX_DIFFICULTY: Difficulty = 7;
 
 /** Most stickers or gems a customer asks for on one nail. */
 export const MAX_WISH_ITEMS = 5;
