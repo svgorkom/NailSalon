@@ -11,7 +11,8 @@ import { loadTheme } from './theme';
 /** Proof page for the customer model of the salon game, at `/#/proto`. Not linked from the normal screens. */
 
 const VIEWS = {
-  ...SALON_VIEWS,
+  salon: SALON_VIEWS.hand.salon,
+  closeup: SALON_VIEWS.hand.closeup,
   face: { position: [0.13, 0.56, 0.4], target: [0.13, 0.5, -0.2] },
   wrist: { position: [-0.22, 0.14, 0.3], target: [0, 0.03, 0.02] },
 } as const satisfies Record<string, CameraView>;
@@ -97,7 +98,7 @@ export function ProtoViewer() {
     fetch(`${import.meta.env.BASE_URL}assets/customers/manifest.json`)
       .then((response) => response.json())
       .then((json: unknown) => {
-        if (!cancelled) setCustomers(parseManifest(json));
+        if (!cancelled) setCustomers(parseManifest(json).filter((entry) => entry.part === 'hand'));
       })
       .catch((reason: unknown) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : 'Manifest niet te laden.');

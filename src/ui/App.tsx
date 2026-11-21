@@ -56,7 +56,8 @@ export function App() {
     const customer = nextCustomer(customers, current, Math.random);
     if (customer === null) return;
     dispatch({ type: 'load', design: createDesign(`Klant ${customer.name}`) });
-    setSalon({ customers, customer, wish: generateWish(newWishSeed(), 'hand', difficulty), difficulty, result: null, best: 0 });
+    setPart(customer.part);
+    setSalon({ customers, customer, wish: generateWish(newWishSeed(), customer.part, difficulty), difficulty, result: null, best: 0 });
   };
 
   const startSalon = () => {
@@ -111,8 +112,8 @@ export function App() {
             {...(salon && {
               salon: {
                 customer: salon.customer,
-                wish: wishText(salon.wish, salon.customer.id, lengthLimit('hand')),
-                checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit('hand'))),
+                wish: wishText(salon.wish, salon.customer.id, lengthLimit(salon.wish.part)),
+                checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit(salon.wish.part))),
                 onDone: () => {
                   const result = scoreWish(salon.wish, history.present);
                   setSalon({ ...salon, result, best: Math.max(salon.best, result.stars) as Stars });

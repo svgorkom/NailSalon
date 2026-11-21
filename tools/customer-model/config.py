@@ -14,9 +14,12 @@ with open(os.path.join(HERE, 'customers.json'), encoding='utf-8') as _file:
     CUSTOMERS = json.load(_file)['customers']
 CUSTOMER_ID = os.environ.get('CUSTOMER', CUSTOMERS[0]['id'])
 CUSTOMER = next(c for c in CUSTOMERS if c['id'] == CUSTOMER_ID)
+# What the player paints on this model: 'hand' (the right arm rests on the table) or 'foot' (pedicure: the right leg rests on a footrest).
+PART = os.environ.get('PART', 'hand')
+assert PART in ('hand', 'foot'), PART
 
 # Intermediate files (.blend, textures, ...). Git-ignored.
-WORK = os.path.join(os.environ.get('CUSTOMER_WORK', os.path.join(HERE, 'work')), CUSTOMER_ID).replace('\\', '/')
+WORK = os.path.join(os.environ.get('CUSTOMER_WORK', os.path.join(HERE, 'work')), CUSTOMER_ID if PART == 'hand' else f'{CUSTOMER_ID}-foot').replace('\\', '/')
 os.makedirs(WORK, exist_ok=True)
 
 

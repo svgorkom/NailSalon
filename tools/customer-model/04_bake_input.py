@@ -21,6 +21,8 @@ print('uv layer', mesh.uv_layers.active.name, 'tris', len(mesh.loop_triangles))
 
 def weights(group):
     out = np.zeros(len(mesh.vertices))
+    if group not in body.vertex_groups:
+        return out
     gi = body.vertex_groups[group].index
     for v in mesh.vertices:
         for g in v.groups:
@@ -29,7 +31,7 @@ def weights(group):
     return out
 
 
-nail, lips = weights('fingernails'), weights('lips')
+nail, lips = np.maximum(weights('fingernails'), weights('toenails')), weights('lips')
 pos = np.array([v.co[:] for v in mesh.vertices])
 nrm = np.array([v.normal[:] for v in mesh.vertices])
 T = len(mesh.loop_triangles)

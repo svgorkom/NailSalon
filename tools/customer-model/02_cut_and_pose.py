@@ -1,4 +1,7 @@
-"""Cuts the upper body of the MPFB human, sets the material slots and poses the customer seated at a table.
+"""Cuts the MPFB human, sets the material slots and poses the customer seated.
+
+PART=hand (default): the lower body is cut off and hidden under the table; PART=foot: the whole body is kept, the customer sits on a chair with the
+right leg stretched out on a footrest (pedicure; the origin is on the footrest, straight below the right ankle; see the end of this file).
 
 The customer faces +Z in glTF (the player's side), sits with the lower body hidden under the table, and rests the right arm
 stretched out on the table: palm down, fingers towards the player, thumb towards the middle of the table. The left hand rests in
@@ -8,7 +11,7 @@ import math
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import CUSTOMER, WORK
+from config import CUSTOMER, PART, WORK
 import bpy
 import bmesh
 import numpy as np
@@ -24,13 +27,14 @@ REFERENCE_HEIGHT = 1.637
 SCALE_Z = bpy.data.objects['Human'].dimensions.z / REFERENCE_HEIGHT
 CUT_Z = 0.86 * SCALE_Z           # metres; below this (standing human) the body is hidden under the table
 SMILE_LIFT = 0.006               # metres the mouth corners rise (standing human)
-HEAD_PITCH_DEG = 5.0            # looking at the hand, but not so far down that the face looks sad
+HEAD_PITCH_DEG = 12.0 if PART == 'foot' else 5.0            # looking at the hand, but not so far down that the face looks sad
 HAIR_MIN_Z = CUSTOMER['hair']['cutZ'] * SCALE_Z               # the hair of the MPFB helper is waist long; cut it at the neck (standing human, metres)
 FRINGE = dict(x=0.085, y=-0.065, z=1.58 * SCALE_Z)   # no hair in front of the face: the helper has a fringe over the eyes
 FACE_FRONT_Y, FACE_FRONT_Z = -0.06, 1.52 * SCALE_Z     # no strand ends in front of the cheeks, chin or mouth
 CLOTH_OFFSET = 0.007             # the sweater lies this far above the skin
 CLOTH_THICKNESS = 0.004
-CLOTH_BONES = ('spine', 'clavicle', 'shoulder01', 'upperarm', 'lowerarm', 'breast')
+FOOT = PART == 'foot'
+CLOTH_BONES = ('spine', 'clavicle', 'shoulder01', 'upperarm', 'lowerarm', 'breast') + (('pelvis', 'upperleg') if FOOT else ())   # a pedicure customer wears trousers to the knee
 CLOTH_MAX_Z = 1.335 * SCALE_Z              # the neckline of the sweater, in standing coordinates
 CLOTH_SMOOTHING = 4              # rounds the shape of the torso so the sweater is loose, not skin tight
 # Directions in Blender axes of the standing human: the front is -Y, the customer's right is -X, up is +Z.
@@ -38,6 +42,16 @@ UPPER_ARM = Vector((-0.12, -0.33, -0.93)).normalized()       # shoulder to elbow
 FOREARM = Vector((0.10, -1.0, 0.0)).normalized()              # elbow to wrist: forward over the table, a little inwards
 LEFT_UPPER_ARM = Vector((0.12, -0.25, -0.96)).normalized()
 LEFT_FOREARM = Vector((-0.45, -0.75, -0.50)).normalized()     # towards the lap
+LEFT_FOREARM_FOOT = Vector((-0.20, -0.85, -0.48)).normalized()
+# Pedicure pose, same axes. Thighs flat forward, the right shin goes forward and down to a low footrest where the foot rests flat (so the top of the
+# foot and the nails face up, towards the player), the left shin hangs down to the floor.
+RIGHT_THIGH = Vector((-0.06, -1.0, 0.0)).normalized()
+RIGHT_SHIN = Vector((0.0, -0.79, -0.62)).normalized()         # knee to ankle
+RIGHT_FOOT = Vector((0.0, -0.998, 0.06)).normalized()         # flat on the footrest, the toes a hair up
+LEFT_THIGH = Vector((0.10, -1.0, 0.0)).normalized()
+LEFT_SHIN = Vector((0.0, 0.10, -1.0)).normalized()
+RIGHT_FOREARM_LAP = Vector((0.20, -0.85, -0.48)).normalized()
+RIGHT_UPPER_ARM_LAP = Vector((-0.12, -0.25, -0.96)).normalized()
 
 body = bpy.data.objects['Human']
 rig = bpy.data.objects['Human.rig']
@@ -71,7 +85,7 @@ TONGUE = members('helper-tongue')
 HAIR = members('helper-hair')
 # Hands and forearms are always kept: in the standing pose of the helper skeleton they hang close to the cut, and a smaller body would lose fingers.
 HAND_GROUPS = [index for name, index in groups.items() if name.startswith(('wrist', 'metacarpal', 'finger', 'lowerarm'))]
-SKIN = {v.index for v in body.data.vertices if v.co.z > CUT_Z or any(g.group in HAND_GROUPS and g.weight > 0.5 for g in v.groups)} & members('body')
+SKIN = (members('body') if FOOT else {v.index for v in body.data.vertices if v.co.z > CUT_Z or any(g.group in HAND_GROUPS and g.weight > 0.5 for g in v.groups)} & members('body'))
 KEEP = SKIN | EYES | LASHES | TEETH | TONGUE | HAIR
 SLOTS = [('Skin', SKIN), ('Eyes', EYES), ('Lashes', LASHES), ('Teeth', TEETH), ('Tongue', TONGUE), ('Hair', HAIR)]
 print('kept', len(KEEP), {name: len(s) for name, s in SLOTS})
@@ -147,11 +161,18 @@ def cloth_share(v):
     return sum(w for i, w in v[deform].items() if names[i].startswith(CLOTH_BONES))
 
 
-region = {v for v in bm.verts if v.co.z < CLOTH_MAX_Z and cloth_share(v) > 0.5}
+# Trousers end in a straight hem just below the knee (a horizontal cut in the standing human, so a clean ring round the leg after posing).
+HEM_Z = (rig.data.bones['lowerleg01.R'].head_local.z - 0.03) if FOOT else -1.0
+region = {v for v in bm.verts if HEM_Z - 0.05 < v.co.z < CLOTH_MAX_Z and cloth_share(v) > (0.2 if FOOT else 0.5)}
 source = [f for f in bm.faces if f.material_index == 0 and all(v in region for v in f.verts)]
 bm.normal_update()
 copied = bmesh.ops.duplicate(bm, geom=source)
 cloth_faces = [g for g in copied['geom'] if isinstance(g, bmesh.types.BMFace)]
+for f in cloth_faces:
+    f.material_index = CLOTH_SLOT
+if FOOT:      # cut the trousers off with a plane: a straight hem, whatever the edges of the mesh do
+    bmesh.ops.bisect_plane(bm, geom=copied['geom'], plane_co=(0.0, 0.0, HEM_Z), plane_no=(0.0, 0.0, 1.0), clear_inner=True)
+    cloth_faces = [f for f in bm.faces if f.material_index == CLOTH_SLOT]
 for f in cloth_faces:
     f.material_index = CLOTH_SLOT
 for v in {v for f in cloth_faces for v in f.verts}:
@@ -206,7 +227,7 @@ def carries_weight(obj, group):
 used = {g.name for obj in skinned for g in obj.vertex_groups if g.name in bone_names and carries_weight(obj, g)}
 for obj in skinned:
     for g in list(obj.vertex_groups):
-        if g.name not in used and g.name not in ('fingernails', 'lips', 'ears', 'scalp'):
+        if g.name not in used and g.name not in ('fingernails', 'toenails', 'lips', 'ears', 'scalp'):
             obj.vertex_groups.remove(g)
     bone_groups = {g.index: g.name for g in obj.vertex_groups if g.name in used}
     for v in obj.data.vertices:
@@ -261,30 +282,43 @@ select_only(rig)
 bpy.ops.object.mode_set(mode='POSE')
 refresh()
 
-# For a right hand the vector from the index to the little-finger knuckle crossed with the direction of the fingers is the back of the hand
-# (checked after posing: the nails face up).
-DORSAL_SIGN = 1.0
-print('rest back of the hand', (DORSAL_SIGN * dorsal()).to_tuple(3))
+if FOOT:
+    # Seated: thighs forward, the right leg on the footrest, the hands in the lap.
+    align('upperleg01.R', segment('upperleg01.R', 'lowerleg01.R'), RIGHT_THIGH)
+    align('lowerleg01.R', segment('lowerleg01.R', 'foot.R'), RIGHT_SHIN)
+    align('foot.R', segment('foot.R', 'toe3-1.R'), RIGHT_FOOT)
+    align('upperleg01.L', segment('upperleg01.L', 'lowerleg01.L'), LEFT_THIGH)
+    align('lowerleg01.L', segment('lowerleg01.L', 'foot.L'), LEFT_SHIN)
+    align('upperarm01.R', segment('upperarm01.R', 'lowerarm01.R'), RIGHT_UPPER_ARM_LAP)
+    align('lowerarm01.R', segment('lowerarm01.R', 'wrist.R'), RIGHT_FOREARM_LAP)
+    align('upperarm01.L', segment('upperarm01.L', 'lowerarm01.L'), LEFT_UPPER_ARM)
+    align('lowerarm01.L', segment('lowerarm01.L', 'wrist.L'), LEFT_FOREARM_FOOT)
+else:
+    # For a right hand the vector from the index to the little-finger knuckle crossed with the direction of the fingers is the back of the hand
+    # (checked after posing: the nails face up).
+    DORSAL_SIGN = 1.0
+    print('rest back of the hand', (DORSAL_SIGN * dorsal()).to_tuple(3))
 
-# Right arm.
-align('upperarm01.R', segment('upperarm01.R', 'lowerarm01.R'), UPPER_ARM)
-align('lowerarm01.R', segment('lowerarm01.R', 'wrist.R'), FOREARM)
-align('wrist.R', segment('wrist.R', 'finger3-1.R'), FOREARM)
-# Turn the palm down by turning the forearm (half in each of its two bones), about the direction of the forearm.
-for _ in range(2):
-    back = DORSAL_SIGN * dorsal()
-    flat = (back - back.dot(FOREARM) * FOREARM).normalized()
-    angle = flat.angle(Vector((0, 0, 1)))
-    if flat.cross(Vector((0, 0, 1))).dot(FOREARM) < 0:
-        angle = -angle
-    rotate_about('lowerarm01.R', Matrix.Rotation(angle / 2, 3, FOREARM))
-    rotate_about('lowerarm02.R', Matrix.Rotation(angle / 2, 3, FOREARM))
-print('hand back after posing', (DORSAL_SIGN * dorsal()).to_tuple(3))
+    # Right arm.
+    align('upperarm01.R', segment('upperarm01.R', 'lowerarm01.R'), UPPER_ARM)
+    align('lowerarm01.R', segment('lowerarm01.R', 'wrist.R'), FOREARM)
+    align('wrist.R', segment('wrist.R', 'finger3-1.R'), FOREARM)
+    # Turn the palm down by turning the forearm (half in each of its two bones), about the direction of the forearm.
+    for _ in range(2):
+        back = DORSAL_SIGN * dorsal()
+        flat = (back - back.dot(FOREARM) * FOREARM).normalized()
+        angle = flat.angle(Vector((0, 0, 1)))
+        if flat.cross(Vector((0, 0, 1))).dot(FOREARM) < 0:
+            angle = -angle
+        rotate_about('lowerarm01.R', Matrix.Rotation(angle / 2, 3, FOREARM))
+        rotate_about('lowerarm02.R', Matrix.Rotation(angle / 2, 3, FOREARM))
+    print('hand back after posing', (DORSAL_SIGN * dorsal()).to_tuple(3))
 
 
-# Left arm: the hand rests in the lap, below the table.
-align('upperarm01.L', segment('upperarm01.L', 'lowerarm01.L'), LEFT_UPPER_ARM)
-align('lowerarm01.L', segment('lowerarm01.L', 'wrist.L'), LEFT_FOREARM)
+    # Left arm: the hand rests in the lap, below the table.
+    align('upperarm01.L', segment('upperarm01.L', 'lowerarm01.L'), LEFT_UPPER_ARM)
+    align('lowerarm01.L', segment('lowerarm01.L', 'wrist.L'), LEFT_FOREARM)
+
 
 # A friendly mouth: the corners of the lips go up a little (the helper's neutral mouth looks sad from the front).
 lips_group = body.vertex_groups['lips'].index
@@ -312,11 +346,24 @@ bpy.ops.object.mode_set(mode='POSE')
 bpy.ops.pose.armature_apply(selected=False)
 bpy.ops.object.mode_set(mode='OBJECT')
 
-# --- origin: on the table top (lowest point of the right hand), under the right wrist -------------------------------------------
-right_hand = [v for v in body.data.vertices if v.co.x < -0.1 and v.co.y < -0.2 and v.co.z < 1.15]
-table_z = min(v.co.z for v in right_hand)
-wrist = rig.data.bones['wrist.R'].head_local
-shift = Vector((-wrist.x, -wrist.y, -table_z))
+# --- origin ---------------------------------------------------------------------------------------------------------------------------
+if FOOT:
+    # On the footrest (the lowest point of the right foot, the heel), straight below the right ankle.
+    names = {g.index: g.name for g in body.vertex_groups}
+
+    def leg_share(v, side, prefixes):
+        return sum(g.weight for g in v.groups if names[g.group].endswith(side) and names[g.group].startswith(prefixes))
+
+    right_leg = [v for v in body.data.vertices if leg_share(v, '.R', ('foot', 'toe', 'lowerleg')) > 0.5]
+    footrest_z = min(v.co.z for v in right_leg)
+    ankle = rig.data.bones['foot.R'].head_local
+    shift = Vector((-ankle.x, -ankle.y, -footrest_z))
+else:
+    # On the table top (lowest point of the right hand), under the right wrist.
+    right_hand = [v for v in body.data.vertices if v.co.x < -0.1 and v.co.y < -0.2 and v.co.z < 1.15]
+    table_z = min(v.co.z for v in right_hand)
+    wrist = rig.data.bones['wrist.R'].head_local
+    shift = Vector((-wrist.x, -wrist.y, -table_z))
 for obj in skinned:
     select_only(obj)
     bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
@@ -331,14 +378,26 @@ for obj in skinned:
     obj.modifiers.new('Armature', 'ARMATURE').object = rig
 
 bb = np.array([v.co[:] for v in body.data.vertices])
-nail_group = body.vertex_groups['fingernails'].index
-nails = [v for v in body.data.vertices if v.co.y < -0.05 and v.co.z < 0.15 and any(g.group == nail_group and g.weight > 0.5 for g in v.groups)]
-print('nail vertices found', len(nails))
-nail_normal = sum((v.normal for v in nails), Vector()).normalized()
-print('mean nail normal', nail_normal.to_tuple(2))
-assert nail_normal.z > 0.3, 'the nails of the right hand must face up'
-print('table z (Blender) was', round(table_z, 4), '; bounds min', bb.min(0).round(3), 'max', bb.max(0).round(3))
-tips = [rig.data.bones[f'finger{n}-3.R'].tail_local for n in range(1, 6)]
-print('fingertips', [tuple(round(c, 3) for c in t) for t in tips])
-print('left wrist z', round(rig.data.bones['wrist.L'].head_local.z, 3), '(below 0 is under the table)')
+if FOOT:
+    toenail_group = body.vertex_groups['toenails'].index
+    nails = [v for v in body.data.vertices if any(g.group == toenail_group and g.weight > 0.5 for g in v.groups) and leg_share(v, '.R', ('toe',)) > 0.3]
+    print('toenail vertices found', len(nails))
+    nail_normal = sum((v.normal for v in nails), Vector()).normalized()
+    print('mean toenail normal', nail_normal.to_tuple(2))
+    assert nail_normal.dot(Vector((0, -1, 1)).normalized()) > 0.3, 'the toenails of the right foot must face the player and up'
+    print('floor (lowest vertex) z', round(bb[:, 2].min(), 4), 'right hip joint', tuple(round(c, 3) for c in rig.data.bones['upperleg01.R'].head_local))
+    print('knee', tuple(round(c, 3) for c in rig.data.bones['lowerleg01.R'].head_local), 'ankle', tuple(round(c, 3) for c in rig.data.bones['foot.R'].head_local))
+    print('toe tips', [tuple(round(c, 3) for c in rig.data.bones[f'toe{n}-{2 if n == 1 else 3}.R'].tail_local) for n in range(1, 6)])
+    print('bounds min', bb.min(0).round(3), 'max', bb.max(0).round(3))
+else:
+    nail_group = body.vertex_groups['fingernails'].index
+    nails = [v for v in body.data.vertices if v.co.y < -0.05 and v.co.z < 0.15 and any(g.group == nail_group and g.weight > 0.5 for g in v.groups)]
+    print('nail vertices found', len(nails))
+    nail_normal = sum((v.normal for v in nails), Vector()).normalized()
+    print('mean nail normal', nail_normal.to_tuple(2))
+    assert nail_normal.z > 0.3, 'the nails of the right hand must face up'
+    print('table z (Blender) was', round(table_z, 4), '; bounds min', bb.min(0).round(3), 'max', bb.max(0).round(3))
+    tips = [rig.data.bones[f'finger{n}-3.R'].tail_local for n in range(1, 6)]
+    print('fingertips', [tuple(round(c, 3) for c in t) for t in tips])
+    print('left wrist z', round(rig.data.bones['wrist.L'].head_local.z, 3), '(below 0 is under the table)')
 bpy.ops.wm.save_as_mainfile(filepath=f'{WORK}/customer_posed.blend')

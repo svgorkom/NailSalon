@@ -146,3 +146,7 @@ The salon game lets customers ask for a design that the player must make. The pl
 - The scene still renders on demand: frames are only requested while the head moves. The step of an animation frame is capped at 50 ms (`MAX_STEP`), because the clock keeps running while the scene sleeps and the first frame after a pause reports a huge delta (this also fixes the camera glide and the arrival).
 
 - The result panel has "Bewaar in Mijn ontwerpen": it saves the design of the round (named "Klant <name>") as a new design through the normal repository, without touching the saved state of the free design.
+
+## Pedicure customer (phase 7)
+
+A customer can have a second model, `<id>-foot.glb` (`PART=foot ./build.sh <id>`): same person seated with the thighs flat, the right foot on a low footrest so the toenails face up and towards the player; trousers end below the knee. The manifest lists it as `part: 'foot'`; the wish, the tool set, the camera presets and the scene (chair, footrest, lamp) follow the part. Only Emma has one for now (about 2.4 MB per model).

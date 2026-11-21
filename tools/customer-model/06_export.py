@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import CUSTOMER, linear, WORK
+from config import CUSTOMER, linear, PART, WORK
 from hair import strand_texture
 import bpy
 import numpy as np
@@ -21,11 +21,18 @@ mesh = body.data
 
 OUT = sys.argv[-1] if sys.argv[-1].endswith('.glb') else f'{WORK}/customer.glb'
 
-FINGERS = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Pinky'}
-DISTAL = {n: f'finger{n}-3.R' for n in FINGERS}
+# What is painted: the five nails of the right hand, or of the right foot. NailBed_* names, bones and extras as in hand.glb / foot.glb.
+if PART == 'foot':
+    FINGERS = {1: 'BigToe', 2: 'SecondToe', 3: 'ThirdToe', 4: 'FourthToe', 5: 'LittleToe'}
+    DISTAL = {1: 'toe1-2.R', 2: 'toe2-3.R', 3: 'toe3-3.R', 4: 'toe4-3.R', 5: 'toe5-3.R'}
+    NAIL_GROUP, DIGIT_KEY = 'toenails', 'toe'
+else:
+    FINGERS = {1: 'Thumb', 2: 'Index', 3: 'Middle', 4: 'Ring', 5: 'Pinky'}
+    DISTAL = {n: f'finger{n}-3.R' for n in FINGERS}
+    NAIL_GROUP, DIGIT_KEY = 'fingernails', 'finger'
 
 # --- nail anchors ------------------------------------------------------------------------------------------------------------------
-toenail_index = body.vertex_groups['fingernails'].index
+toenail_index = body.vertex_groups[NAIL_GROUP].index
 nail_verts = [v for v in mesh.vertices if any(g.group == toenail_index and g.weight > 0.5 for g in v.groups)]
 segs = {n: (rig.data.bones[b].head_local.copy(), rig.data.bones[b].tail_local.copy()) for n, b in DISTAL.items()}
 
@@ -111,7 +118,7 @@ for n, verts in clusters.items():
     empty.parent_bone = DISTAL[n]
     bpy.context.view_layer.update()
     empty.matrix_world = frame
-    empty['finger'] = FINGERS[n]
+    empty[DIGIT_KEY] = FINGERS[n]
     empty['nailWidth'] = float(ax.max() - ax.min())
     empty['bedLength'] = float(ay.max())
     for key, value in zip(('gx', 'gy', 'gxx', 'gxy', 'gyy'), (gx, gy, gxx, gxy, gyy)):
@@ -119,7 +126,7 @@ for n, verts in clusters.items():
 
 # --- clean up ----------------------------------------------------------------------------------------------------------------------
 for obj in (body, hair, cloth):
-    for name in ('fingernails', 'lips', 'ears', 'scalp'):
+    for name in ('fingernails', 'toenails', 'lips', 'ears', 'scalp'):
         if name in obj.vertex_groups:
             obj.vertex_groups.remove(obj.vertex_groups[name])
 for key in list(body.keys()):          # MPFB bookkeeping that the app does not need

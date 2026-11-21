@@ -1,6 +1,9 @@
 /** One customer of the salon game as listed in `public/assets/customers/manifest.json`, which `tools/customer-model/manifest.py` writes. */
 export interface CustomerEntry {
+  /** Unique in the manifest; a customer who is there for a pedicure as well has `<id>-foot` as the id of that model. */
   readonly id: string;
+  /** What she is there for: her right hand on the table, or her right foot on a footrest. */
+  readonly part: 'hand' | 'foot';
   /** Dutch first name. */
   readonly name: string;
   /** File name of the model, next to the manifest. */
@@ -29,8 +32,10 @@ export function parseManifest(json: unknown): readonly CustomerEntry[] {
     seen.add(id);
     const skin = text('skin');
     if (!/^#[0-9a-f]{6}$/i.test(skin)) throw new TypeError(`Customer "${id}" has an invalid skin colour.`);
+    const part = entry?.part ?? 'hand';
+    if (part !== 'hand' && part !== 'foot') throw new TypeError(`Customer "${id}" has an invalid "part".`);
     const bytes = entry?.bytes;
     if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) throw new TypeError(`Customer "${id}" needs a positive "bytes".`);
-    return { id, name: text('name'), file: text('file'), bytes, skin, about: text('about') };
+    return { id, part, name: text('name'), file: text('file'), bytes, skin, about: text('about') };
   });
 }

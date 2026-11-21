@@ -3,14 +3,25 @@
     {
       "id": "emma",
       "name": "Emma",
+      "part": "hand",
       "file": "emma.glb",
       "bytes": 1989260,
       "skin": "#e9b9a0",
       "about": "Studeert, houdt van pastelkleuren en kleine steentjes."
     },
     {
+      "id": "emma-foot",
+      "name": "Emma",
+      "part": "foot",
+      "file": "emma-foot.glb",
+      "bytes": 2393932,
+      "skin": "#e9b9a0",
+      "about": "Studeert, houdt van pastelkleuren en kleine steentjes."
+    },
+    {
       "id": "fatima",
       "name": "Fatima",
+      "part": "hand",
       "file": "fatima.glb",
       "bytes": 1924948,
       "skin": "#5e3a26",
@@ -19,6 +30,7 @@
     {
       "id": "mei",
       "name": "Mei",
+      "part": "hand",
       "file": "mei.glb",
       "bytes": 1985328,
       "skin": "#d9a07c",
@@ -27,6 +39,7 @@
     {
       "id": "ria",
       "name": "Ria",
+      "part": "hand",
       "file": "ria.glb",
       "bytes": 1981276,
       "skin": "#f3cdb6",
@@ -35,6 +48,7 @@
     {
       "id": "lotte",
       "name": "Lotte",
+      "part": "hand",
       "file": "lotte.glb",
       "bytes": 1993380,
       "skin": "#f3cdb6",
@@ -43,6 +57,7 @@
     {
       "id": "noor",
       "name": "Noor",
+      "part": "hand",
       "file": "noor.glb",
       "bytes": 1987944,
       "skin": "#b9805a",
