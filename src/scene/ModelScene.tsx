@@ -1,8 +1,9 @@
 import { Environment, Lightformer, OrbitControls, useGLTF } from '@react-three/drei';
 import { Canvas, createPortal, type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Fragment, type ReactNode, useEffect, useMemo, useRef } from 'react';
-import { type BufferGeometry, CanvasTexture, type Group, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, type Object3D, SkinnedMesh, SRGBColorSpace, Texture, Vector3 } from 'three';
-import { type Design, type Digit, FINGERS, type Finish, type Gem, type GemKind, type Nail, nailAt, TOES } from '../core';
+import { type BufferGeometry, CanvasTexture, Euler, type Group, LinearSRGBColorSpace, Mesh, MeshStandardMaterial, type Object3D, Quaternion, SkinnedMesh, SRGBColorSpace, Texture, Vector3 } from 'three';
+import { type Design, type Digit, FINGERS, type Finish, type Gem, type GemKind, type Nail, nailAt, type Stars, TOES } from '../core';
+import { headAngles, MOTION_SECONDS, type Motion, motionFor, nextIdleDelay } from './customerMotion';
 import { skinTint } from '../ui/skin';
 import { SCENE_LIGHT, type Theme } from '../ui/theme';
 import { CLEAR_GEM, createGemGeometries, GEM_MATERIALS, gemOrientation } from './gems';
@@ -35,6 +36,10 @@ interface ModelSceneProps {
   readonly enter?: boolean;
   /** Where the camera stands and looks, in scene units; the camera glides there when it changes. Without it the part's own view stays. */
   readonly view?: CameraView;
+  /** The customer reacts to this many stars with a movement of the head, each time it is set; she glances around now and then while it is not set. */
+  readonly reaction?: Stars;
+  /** Random numbers in 0..1 for the glances of the customer. */
+  readonly random?: () => number;
   /** Rendered inside the canvas, for tools that need the renderer or the frame loop. */
   readonly children?: ReactNode;
 }
@@ -83,7 +88,7 @@ useGLTF.preload(`${import.meta.env.BASE_URL}assets/hand/hand.glb`);
 useGLTF.preload(`${import.meta.env.BASE_URL}assets/foot/foot.glb`);
 // Customers are not preloaded: one is loaded at a time and released again.
 
-export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, modelUrl, limited, enter, view, children }: ModelSceneProps) {
+export function ModelScene({ part, design, selected, theme, skin, paint, onSelect, modelUrl, limited, enter, view, reaction, random = Math.random, children }: ModelSceneProps) {
   const setup = SETUPS[part];
   const url = setup.url ?? modelUrl;
   if (!url) throw new Error(`Part "${part}" needs a modelUrl.`);
@@ -96,7 +101,7 @@ export function ModelScene({ part, design, selected, theme, skin, paint, onSelec
         <Lightformer form="rect" intensity={1} position={[-4, 1, 2]} scale={[2, 4, 1]} />
         <Lightformer form="ring" intensity={1.5} position={[4, 2, 2]} scale={2} />
       </Environment>
-      <Body setup={setup} url={url} release={setup.url === null} enter={enter === true} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
+      <Body setup={setup} url={url} release={setup.url === null} enter={enter === true} reaction={reaction} random={random} design={design} selected={selected} skin={skin} paint={paint} onSelect={onSelect} />
       <OrbitControls
         makeDefault
         zoomToCursor
@@ -114,6 +119,9 @@ export function ModelScene({ part, design, selected, theme, skin, paint, onSelec
     </Canvas>
   );
 }
+
+/** The longest step of an animation in one frame (seconds). The clock keeps running while the scene sleeps (frameloop "demand"), so the first frame after a pause reports a huge delta. */
+const MAX_STEP = 1 / 20;
 
 const GLIDE_SECONDS = 0.6;
 
@@ -133,7 +141,7 @@ function CameraGlide({ view }: { readonly view: CameraView }) {
   useFrame((_, delta) => {
     const current = motion.current;
     if (!current || !controls) return;
-    current.elapsed += delta;
+    current.elapsed += Math.min(delta, MAX_STEP);
     const t = Math.min(current.elapsed / GLIDE_SECONDS, 1);
     const eased = t * t * (3 - 2 * t);
     camera.position.lerpVectors(current.from, new Vector3(...view.position), eased);
@@ -153,6 +161,8 @@ interface BodyProps {
   readonly release: boolean;
   /** Slide in from the side when the model appears. */
   readonly enter: boolean;
+  readonly reaction: Stars | undefined;
+  readonly random: () => number;
   readonly design: Design;
   readonly selected: Digit | null;
   readonly skin: string;
@@ -160,7 +170,7 @@ interface BodyProps {
   readonly onSelect: (digit: Digit) => void;
 }
 
-function Body({ setup, url, release, enter, design, selected, skin, paint, onSelect }: BodyProps) {
+function Body({ setup, url, release, enter, reaction, random, design, selected, skin, paint, onSelect }: BodyProps) {
   const { scene } = useGLTF(url);
   const invalidate = useThree((state) => state.invalidate);
   const anchors = useMemo(() => findNailAnchors(scene, setup.digits), [scene, setup.digits]);
@@ -206,6 +216,7 @@ function Body({ setup, url, release, enter, design, selected, skin, paint, onSel
       <Arrival enabled={enter} key={url}>
         <primitive object={scene} onClick={pick} />
       </Arrival>
+      {setup.url === null && <CustomerLife scene={scene} reaction={reaction} random={random} />}
       {setup.digits.map((digit) => {
         const nail = nailAt(design, digit);
         return (
@@ -226,6 +237,81 @@ function Body({ setup, url, release, enter, design, selected, skin, paint, onSel
   );
 }
 
+interface HeadRig {
+  readonly head: Object3D;
+  /** The rotation of the head bone in the file. */
+  readonly base: Quaternion;
+  /** The world rotation of the parent of the head bone in the frame of the model, and its inverse. */
+  readonly parent: Quaternion;
+  readonly parentInverse: Quaternion;
+}
+
+/** The head bone and the frame it turns in, or null when the model has none. */
+function findHeadRig(scene: Object3D): HeadRig | null {
+  const head = scene.getObjectByName('head');
+  if (!head?.parent) return null;
+  scene.updateMatrixWorld(true);
+  const parent = head.parent.getWorldQuaternion(new Quaternion()).premultiply(scene.getWorldQuaternion(new Quaternion()).invert());
+  return { head, base: head.quaternion.clone(), parent, parentInverse: parent.clone().invert() };
+}
+
+/**
+ * Small head movements of the customer: a glance every 5 to 9 seconds, and the reaction to the result. Only the head bone turns, so the hand on the table
+ * stays where it is. Frames are only requested while the head moves (the scene renders on demand).
+ */
+function CustomerLife({ scene, reaction, random }: { readonly scene: Object3D; readonly reaction: Stars | undefined; readonly random: () => number }) {
+  const invalidate = useThree((state) => state.invalidate);
+  const rig = useRef<HeadRig | null>(null);
+  const playing = useRef<{ readonly motion: Motion; readonly side: 1 | -1; elapsed: number } | null>(null);
+
+  useEffect(() => {
+    const found = findHeadRig(scene);
+    rig.current = found;
+    return () => {
+      if (found) found.head.quaternion.copy(found.base);
+      rig.current = null;
+    };
+  }, [scene]);
+
+  useEffect(() => {
+    if (reaction === undefined) return undefined;
+    playing.current = { motion: motionFor(reaction), side: 1, elapsed: 0 };
+    invalidate();
+    return undefined;
+  }, [reaction, invalidate]);
+
+  useEffect(() => {
+    if (reaction !== undefined) return undefined;
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        if (playing.current === null) {
+          playing.current = { motion: 'glance', side: random() < 0.5 ? -1 : 1, elapsed: 0 };
+          invalidate();
+        }
+        schedule();
+      }, nextIdleDelay(random) * 1000);
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
+  }, [reaction, random, invalidate]);
+
+  useFrame((_, delta) => {
+    const current = playing.current;
+    const head = rig.current;
+    if (!current || !head) return;
+    current.elapsed += Math.min(delta, MAX_STEP);
+    const { pitch, yaw, roll } = headAngles(current.motion, current.elapsed, current.side);
+    const turn = new Quaternion().setFromEuler(new Euler(pitch, yaw, roll, 'XYZ'));
+    // New rotation = parent⁻¹ · turn · parent · base: the turn is made about the axes of the model, whatever the axes of the bone are.
+    head.head.quaternion.copy(head.parentInverse).multiply(turn).multiply(head.parent).multiply(head.base);
+    if (current.elapsed >= MOTION_SECONDS[current.motion]) playing.current = null;
+    invalidate();
+  });
+
+  return null;
+}
+
 const ARRIVAL_SECONDS = 1.3;
 const ARRIVAL_DISTANCE = 1.4;
 
@@ -244,7 +330,7 @@ function Arrival({ enabled, children }: { readonly enabled: boolean; readonly ch
 
   useFrame((_, delta) => {
     if (!group.current || elapsed.current >= ARRIVAL_SECONDS) return;
-    elapsed.current = Math.min(elapsed.current + delta, ARRIVAL_SECONDS);
+    elapsed.current = Math.min(elapsed.current + Math.min(delta, MAX_STEP), ARRIVAL_SECONDS);
     const t = elapsed.current / ARRIVAL_SECONDS;
     group.current.position.x = ARRIVAL_DISTANCE * (1 - t) * (1 - t);
     invalidate();

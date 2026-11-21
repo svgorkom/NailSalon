@@ -17,7 +17,7 @@ interface SalonResultProps {
 export function SalonResult({ customer, wish, result, best, onRetry, onNext }: SalonResultProps) {
   const limit = lengthLimit(wish.part);
   return (
-    <section className="start viewer salon-result" aria-labelledby="result-title">
+    <section className="salon-result" aria-labelledby="result-title">
       <h2 id="result-title" className="start-title">
         {customer.name}: <span className="salon-stars" role="img" aria-label={`${result.stars} van 3 sterren`}>
           {[1, 2, 3].map((n) => (

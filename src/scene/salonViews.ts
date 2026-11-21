@@ -9,3 +9,6 @@ export const SALON_VIEWS = {
 } as const satisfies Record<string, CameraView>;
 
 export type SalonViewId = keyof typeof SALON_VIEWS;
+
+/** The camera while the customer reacts to the result: closer, on her face. */
+export const REACTION_VIEW = { position: [0.13, 0.6, 0.7], target: [0.13, 0.48, -0.2] } as const satisfies CameraView;

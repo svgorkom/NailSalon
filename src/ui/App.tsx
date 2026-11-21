@@ -104,15 +104,6 @@ export function App() {
           <p className="loading" role="alert">
             {salon.error}
           </p>
-        ) : salon !== null && salon.result !== null ? (
-          <SalonResult
-            customer={salon.customer}
-            wish={salon.wish}
-            result={salon.result}
-            best={salon.best}
-            onRetry={() => setSalon({ ...salon, result: null })}
-            onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(5, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
-          />
         ) : (
           <Editor
             key={salon ? `salon-${salon.customer.id}` : part}
@@ -126,6 +117,21 @@ export function App() {
                   const result = scoreWish(salon.wish, history.present);
                   setSalon({ ...salon, result, best: Math.max(salon.best, result.stars) as Stars });
                 },
+                ...(salon.result && {
+                  outcome: {
+                    stars: salon.result.stars,
+                    panel: (
+                      <SalonResult
+                        customer={salon.customer}
+                        wish={salon.wish}
+                        result={salon.result}
+                        best={salon.best}
+                        onRetry={() => setSalon({ ...salon, result: null })}
+                        onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(5, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
+                      />
+                    ),
+                  },
+                }),
               },
             })}
             history={history}
