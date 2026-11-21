@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { FINGERS } from '../../src/core';
+import { FINGERS, TOES } from '../../src/core';
 import { NAIL_ANCHOR_NAMES, readNailBed } from '../../src/scene/nailBed';
+import footFile from '../../public/assets/foot/foot.glb?raw';
 import handFile from '../../public/assets/hand/hand.glb?raw';
 
 interface GltfNode {
@@ -24,15 +25,42 @@ function readGltf(file: string): Gltf {
 }
 
 const files = import.meta.glob<string>('../../public/assets/customers/*.glb', { query: '?raw', import: 'default', eager: true });
-const customers = Object.entries(files).map(([path, file]) => ({ id: path.slice(path.lastIndexOf('/') + 1, -'.glb'.length), gltf: readGltf(file) }));
+const customers = Object.entries(files).map(([path, file]) => {
+  const id = path.slice(path.lastIndexOf('/') + 1, -'.glb'.length);
+  return { id, part: id.endsWith('-foot') ? ('foot' as const) : ('hand' as const), gltf: readGltf(file) };
+});
 const hand = readGltf(handFile);
+const foot = readGltf(footFile);
+const handCustomers = customers.filter((customer) => customer.part === 'hand');
+const footCustomers = customers.filter((customer) => customer.part === 'foot');
 
 describe('customer models', () => {
-  it('are the six of the manifest', () => {
-    expect(customers.map((customer) => customer.id).sort()).toEqual(['emma', 'fatima', 'lotte', 'mei', 'noor', 'ria']);
+  it('are the six of the manifest, and the pedicure customers', () => {
+    expect(handCustomers.map((customer) => customer.id).sort()).toEqual(['emma', 'fatima', 'lotte', 'mei', 'noor', 'ria']);
+    expect(footCustomers.map((customer) => customer.id)).toEqual(['emma-foot']);
   });
 
-  describe.each(customers)('$id', ({ gltf }) => {
+  describe.each(footCustomers)('$id', ({ gltf }) => {
+    it.each(TOES)('has a nail anchor for the %s that the nail code can read', (digit) => {
+      const node = gltf.nodes.find((candidate) => candidate.name === NAIL_ANCHOR_NAMES[digit]);
+      expect(node?.extras).toBeDefined();
+      const bed = readNailBed(node?.extras ?? {});
+      // A real toenail: between 5 and 20 mm wide.
+      expect(bed.width).toBeGreaterThan(0.005);
+      expect(bed.width).toBeLessThan(0.02);
+    });
+
+    it('gives its anchors the same properties as the foot model', () => {
+      const keys = (model: Gltf) => Object.keys(model.nodes.find((node) => node.name === 'NailBed_BigToe')?.extras ?? {}).sort();
+      expect(keys(gltf)).toEqual(keys(foot));
+    });
+
+    it('has the skin material the tint is applied to', () => {
+      expect(gltf.materials.map((material) => material.name)).toContain('Skin');
+    });
+  });
+
+  describe.each(handCustomers)('$id', ({ gltf }) => {
     it.each(FINGERS)('has a nail anchor for the %s that the nail code can read', (digit) => {
       const node = gltf.nodes.find((candidate) => candidate.name === NAIL_ANCHOR_NAMES[digit]);
       expect(node?.extras).toBeDefined();

@@ -3,7 +3,7 @@ import type { CustomerEntry } from '../../src/scene/customerManifest';
 import { salonEnabled } from '../../src/ui/flags';
 import { nextCustomer } from '../../src/ui/salon';
 
-const customer = (id: string): CustomerEntry => ({ id, name: id, file: `${id}.glb`, bytes: 1, skin: '#e9b9a0', about: '.' });
+const customer = (id: string): CustomerEntry => ({ id, part: 'hand', name: id, file: `${id}.glb`, bytes: 1, skin: '#e9b9a0', about: '.' });
 const [emma, mei, ria] = [customer('emma'), customer('mei'), customer('ria')];
 
 describe('nextCustomer', () => {

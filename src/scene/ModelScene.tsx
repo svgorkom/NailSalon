@@ -16,7 +16,7 @@ import { nearestDigit, type Point } from './picking';
 export type Part = 'hand' | 'foot';
 
 /** What the scene can show: a part on its own, or the customer of the salon game (still a proof, see `ProtoViewer`). */
-type ScenePart = Part | 'customer';
+type ScenePart = Part | 'customer' | 'customerFoot';
 
 interface ModelSceneProps {
   readonly part: ScenePart;
@@ -74,6 +74,8 @@ const SETUPS: Readonly<Record<ScenePart, PartSetup>> = {
   foot: { url: `${import.meta.env.BASE_URL}assets/foot/foot.glb`, digits: TOES, scale: 10, target: [0.07, 0.5, 0], pickDistance: 0.012, camera: [0.07, 0.5, 4.6], minDistance: 1.2, maxDistance: 9 },
   // In metres, origin on the table under the right wrist, the customer behind it facing +z; the player looks from +z.
   customer: { url: null, digits: FINGERS, scale: 1, target: [0.12, 0.25, 0], pickDistance: 0.025, camera: [0.12, 0.45, 1.2], minDistance: 0.15, maxDistance: 2.5 },
+  // Pedicure: origin on the footrest under the right ankle, the customer behind it on a chair facing +z, the toes towards the player.
+  customerFoot: { url: null, digits: TOES, scale: 1, target: [0.05, 0.45, -0.3], pickDistance: 0.012, camera: [0.15, 0.95, 1.5], minDistance: 0.15, maxDistance: 3 },
 };
 
 const FINISH_MATERIAL: Readonly<Record<Finish, { roughness: number; metalness: number; clearcoat: number }>> = {

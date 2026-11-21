@@ -3,7 +3,7 @@ import { canRedo, canUndo, type Command, type Design, type Digit, FINGERS, FINIS
 import type { CustomerEntry } from '../scene/customerManifest';
 import { NailPaint } from '../scene/nailPaint';
 import { Salon } from '../scene/Salon';
-import { REACTION_VIEW, SALON_VIEWS, type SalonViewId } from '../scene/salonViews';
+import { SALON_VIEWS, type SalonViewId } from '../scene/salonViews';
 import type { AiDesigner } from '../data/aiDesigner';
 import type { DesignRepository } from '../data/designRepository';
 import { AiTools, type ChatLine } from './AiTools';
@@ -175,7 +175,7 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
         <Suspense fallback={<p className="loading">{salon ? salon.customer.name : part === 'hand' ? 'Hand' : 'Voet'} laden…</p>}>
           {salon ? (
             <ModelScene
-              part="customer"
+              part={part === 'foot' ? 'customerFoot' : 'customer'}
               modelUrl={customerModelUrl(salon.customer)}
               design={design}
               selected={allNails ? null : selected}
@@ -183,12 +183,12 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
               skin={salon.customer.skin}
               paint={paint}
               onSelect={setSelected}
-              view={salon.outcome ? REACTION_VIEW : SALON_VIEWS[salonView]}
+              view={salon.outcome ? SALON_VIEWS[part].reaction : SALON_VIEWS[part][salonView]}
               {...(salon.outcome && { reaction: salon.outcome.stars })}
               limited
               enter
             >
-              <Salon />
+              <Salon part={part} />
             </ModelScene>
           ) : (
             <ModelScene part={part} design={design} selected={allNails ? null : selected} theme={theme} skin={skinToneOf(skin).color} paint={paint} onSelect={setSelected} />
