@@ -1,4 +1,4 @@
-import type { ColorFamily, Requirement, Stars, Wish } from '../core';
+import type { ColorFamily, Requirement, Stars, Wish, WishPart } from '../core';
 import { DIGIT_LABELS, FINISH_LABELS, GEM_LABELS, SHAPE_LABELS, STICKER_LABELS } from './labels';
 
 const COLOR_NAMES: Readonly<Record<ColorFamily, string>> = {
@@ -26,9 +26,10 @@ const FINISH_PHRASES: Readonly<Record<keyof typeof FINISH_LABELS, string>> = {
 /** Where a customer starts her wish. Which one she uses depends on who she is, so the same customer always talks the same way. */
 const OPENERS = ['Hoi! Ik wil graag', 'Kun jij voor mij maken:', 'Ik hoop dat je dit kunt:', 'Fijn dat je er bent! Ik wil graag'] as const;
 
-/** "alle nagels" or "de ringvinger". */
-function scopeText(requirement: Requirement): string {
-  return requirement.scope === 'all' ? 'alle nagels' : `de ${DIGIT_LABELS[requirement.scope].toLowerCase()}`;
+/** "alle nagels", "alle teennagels" or "de ringvinger". */
+function scopeText(requirement: Requirement, part: WishPart): string {
+  if (requirement.scope === 'all') return part === 'hand' ? 'alle nagels' : 'alle teennagels';
+  return `de ${DIGIT_LABELS[requirement.scope].toLowerCase()}`;
 }
 
 function countText(min: number, max: number, one: string, many: string, kinds: readonly string[] | undefined): string {
@@ -43,8 +44,8 @@ function lengthText(min: number | undefined, max: number | undefined, limit: num
 }
 
 /** One requirement in Dutch, without a capital: "alle nagels in het rood", "de ringvinger met 1 steentje". */
-export function requirementText(requirement: Requirement, lengthLimit: number): string {
-  const scope = scopeText(requirement);
+export function requirementText(requirement: Requirement, lengthLimit: number, part: WishPart): string {
+  const scope = scopeText(requirement, part);
   switch (requirement.kind) {
     case 'colorFamily':
       return `${scope} in het ${COLOR_NAMES[requirement.family]}`;
@@ -64,15 +65,15 @@ export function requirementText(requirement: Requirement, lengthLimit: number): 
 }
 
 /** The line of the wish card for a requirement, with a capital. */
-export function checklistLine(requirement: Requirement, lengthLimit: number): string {
-  const text = requirementText(requirement, lengthLimit);
+export function checklistLine(requirement: Requirement, lengthLimit: number, part: WishPart): string {
+  const text = requirementText(requirement, lengthLimit, part);
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** The wish as a short friendly text, from the requirements only. `customerId` picks her way of starting. */
 export function wishText(wish: Wish, customerId: string, lengthLimit: number): string {
   const opener = OPENERS[[...customerId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % OPENERS.length] ?? OPENERS[0];
-  const parts = wish.requirements.map((requirement) => requirementText(requirement, lengthLimit));
+  const parts = wish.requirements.map((requirement) => requirementText(requirement, lengthLimit, wish.part));
   const list = parts.length === 1 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} en ${parts[parts.length - 1] ?? ''}`;
   return `${opener} ${list}.`;
 }

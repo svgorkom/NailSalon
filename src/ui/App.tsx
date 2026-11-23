@@ -113,7 +113,7 @@ export function App() {
               salon: {
                 customer: salon.customer,
                 wish: wishText(salon.wish, salon.customer.id, lengthLimit(salon.wish.part)),
-                checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit(salon.wish.part))),
+                checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit(salon.wish.part), salon.wish.part)),
                 onDone: () => {
                   const result = scoreWish(salon.wish, history.present);
                   setSalon({ ...salon, result, best: Math.max(salon.best, result.stars) as Stars });
