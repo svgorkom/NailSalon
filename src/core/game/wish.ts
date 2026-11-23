@@ -30,6 +30,8 @@ export type Requirement =
   | { readonly kind: 'french'; readonly scope: NailScope; readonly on: boolean }
   /** Only stickers of the given kinds count; without `kinds` every sticker does. */
   | { readonly kind: 'stickers'; readonly scope: NailScope; readonly min: number; readonly max: number; readonly kinds?: readonly StickerKind[] }
+  /** At least one sponge stroke on the nail; with `family` one in that colour (a stroke in a neighbouring colour counts half). */
+  | { readonly kind: 'sponge'; readonly scope: NailScope; readonly family?: ColorFamily }
   | { readonly kind: 'gems'; readonly scope: NailScope; readonly min: number; readonly max: number; readonly kinds?: readonly GemKind[] };
 
 export interface Wish {
@@ -77,6 +79,9 @@ function assertRequirement(part: WishPart, requirement: Requirement): void {
       return;
     case 'length':
       assertLength(part, requirement.min, requirement.max);
+      return;
+    case 'sponge':
+      if (requirement.family !== undefined && !COLOR_FAMILIES.includes(requirement.family)) throw new RangeError('Unknown colour.');
       return;
     case 'french':
       if (typeof requirement.on !== 'boolean') throw new RangeError('French must be true or false.');

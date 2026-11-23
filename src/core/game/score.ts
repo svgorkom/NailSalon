@@ -60,6 +60,12 @@ function scoreNail(part: WishPart, requirement: Requirement, nail: Nail): number
     }
     case 'french':
       return (nail.french !== null) === requirement.on ? 1 : 0;
+    case 'sponge': {
+      const dabs = nail.strokes.filter((stroke) => stroke.sponge !== undefined && !stroke.erase);
+      if (requirement.family === undefined) return dabs.length > 0 ? 1 : 0;
+      const { family } = requirement;
+      return Math.max(0, ...dabs.map((stroke) => colorFamilyMatch(stroke.color, family)));
+    }
     case 'stickers': {
       const { kinds } = requirement;
       const count = kinds === undefined ? nail.stickers.length : nail.stickers.filter((sticker) => kinds.includes(sticker.kind)).length;

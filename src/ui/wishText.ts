@@ -56,6 +56,8 @@ export function requirementText(requirement: Requirement, lengthLimit: number): 
       return `${scope} ${lengthText(requirement.min, requirement.max, lengthLimit)}`;
     case 'french':
       return `${scope} ${requirement.on ? 'met een' : 'zonder'} french tip`;
+    case 'sponge':
+      return `${scope} met het sponsje${requirement.family === undefined ? '' : ` in het ${COLOR_NAMES[requirement.family]}`}`;
     case 'stickers':
       return `${scope} met ${countText(requirement.min, requirement.max, 'sticker', 'stickers', requirement.kinds?.map((kind) => STICKER_LABELS[kind]))}`;
     case 'gems':
