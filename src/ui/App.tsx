@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { createDesign, createHistory, type Difficulty, generateWish, lengthLimit, MAX_DIFFICULTY, scoreWish, type Stars, type Wish, type WishResult } from '../core';
+import { createDesign, createHistory, type Difficulty, generateWish, lengthLimit, scoreWish, type Stars, type Wish, type WishResult } from '../core';
 import type { CustomerEntry } from '../scene/customerManifest';
 import { httpAiDesigner } from '../data/aiDesigner';
 import { httpDesignRepository } from '../data/designRepository';
@@ -8,7 +8,7 @@ import { historyReducer } from './historyReducer';
 import { type SavedState, startState } from './saving';
 import { loadSkin, saveSkin } from './skin';
 import { salonEnabled } from './flags';
-import { loadCustomers, nextCustomer } from './salon';
+import { type Level, loadCustomers, nextCustomer, nextDifficulty } from './salon';
 import { SalonResult } from './SalonResult';
 import { checklistLine, wishText } from './wishText';
 import { MainMenu, type MenuChoice } from './MainMenu';
@@ -21,6 +21,8 @@ interface SalonState {
   readonly customer: CustomerEntry;
   readonly wish: Wish;
   readonly difficulty: Difficulty;
+  /** The level the player chose, or 'auto'. */
+  readonly level: Level;
   readonly result: WishResult | null;
   readonly best: Stars;
 }
@@ -52,19 +54,19 @@ export function App() {
   useEffect(() => saveSkin(skin), [skin]);
 
   /** Brings in the next customer with a fresh design and a new wish. */
-  const receive = (customers: readonly CustomerEntry[], current: CustomerEntry | null, difficulty: Difficulty) => {
+  const receive = (customers: readonly CustomerEntry[], current: CustomerEntry | null, difficulty: Difficulty, level: Level) => {
     const customer = nextCustomer(customers, current, Math.random);
     if (customer === null) return;
     dispatch({ type: 'load', design: createDesign(`Klant ${customer.name}`) });
     setPart(customer.part);
-    setSalon({ customers, customer, wish: generateWish(newWishSeed(), customer.part, difficulty), difficulty, result: null, best: 0 });
+    setSalon({ customers, customer, wish: generateWish(newWishSeed(), customer.part, difficulty), difficulty, level, result: null, best: 0 });
   };
 
   const startSalon = () => {
     setPart('hand');
     setSalon(null);
     loadCustomers().then(
-      (customers) => receive(customers, null, 1),
+      (customers) => receive(customers, null, 1, 'auto'),
       (reason: unknown) => setSalon({ error: reason instanceof Error ? reason.message : 'Klanten laden mislukt.' }),
     );
   };
@@ -114,6 +116,17 @@ export function App() {
                 customer: salon.customer,
                 wish: wishText(salon.wish, salon.customer.id, lengthLimit(salon.wish.part)),
                 checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit(salon.wish.part))),
+                level: salon.level,
+                difficulty: salon.difficulty,
+                /** Choosing a level starts a new wish for the same customer; 'auto' only changes how the level goes on. */
+                onLevelChange: (level: Level) => {
+                  if (level === 'auto') {
+                    setSalon({ ...salon, level });
+                    return;
+                  }
+                  dispatch({ type: 'load', design: createDesign(`Klant ${salon.customer.name}`) });
+                  setSalon({ ...salon, level, difficulty: level, wish: generateWish(newWishSeed(), salon.customer.part, level), result: null, best: 0 });
+                },
                 onDone: () => {
                   const result = scoreWish(salon.wish, history.present);
                   setSalon({ ...salon, result, best: Math.max(salon.best, result.stars) as Stars });
@@ -131,7 +144,7 @@ export function App() {
                           await repository.save(newId(), history.present, false);
                         }}
                         onRetry={() => setSalon({ ...salon, result: null })}
-                        onNext={() => receive(salon.customers, salon.customer, salon.best >= 2 ? (Math.min(MAX_DIFFICULTY, salon.difficulty + 1) as Difficulty) : salon.difficulty)}
+                        onNext={() => receive(salon.customers, salon.customer, nextDifficulty(salon.level, salon.difficulty, salon.best), salon.level)}
                       />
                     ),
                   },

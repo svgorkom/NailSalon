@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerEntry } from '../../src/scene/customerManifest';
 import { salonEnabled } from '../../src/ui/flags';
-import { nextCustomer } from '../../src/ui/salon';
+import { nextCustomer, nextDifficulty } from '../../src/ui/salon';
 
 const customer = (id: string): CustomerEntry => ({ id, part: 'hand', name: id, file: `${id}.glb`, bytes: 1, skin: '#e9b9a0', about: '.' });
 const [emma, mei, ria] = [customer('emma'), customer('mei'), customer('ria')];
@@ -43,5 +43,18 @@ describe('salonEnabled', () => {
     expect(salonEnabled('?salon=no')).toBe(false);
     expect(salonEnabled('?salon=1')).toBe(true);
     expect(salonEnabled('')).toBe(true);
+  });
+});
+
+describe('nextDifficulty', () => {
+  it('stays on the chosen level, whatever the stars', () => {
+    expect(nextDifficulty(3, 3, 3)).toBe(3);
+    expect(nextDifficulty(7, 7, 0)).toBe(7);
+  });
+
+  it('on auto goes up after at least 2 stars, stays after fewer, and stops at the hardest level', () => {
+    expect(nextDifficulty('auto', 2, 2)).toBe(3);
+    expect(nextDifficulty('auto', 2, 1)).toBe(2);
+    expect(nextDifficulty('auto', 7, 3)).toBe(7);
   });
 });
