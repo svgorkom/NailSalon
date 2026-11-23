@@ -14,7 +14,7 @@ import type { SavedState } from './saving';
 import { DIGIT_LABELS, FINISH_LABELS, PALETTE, SHAPE_LABELS } from './labels';
 import { NailPad } from './NailPad';
 import { SalonBar } from './SalonBar';
-import { customerModelUrl } from './salon';
+import { customerModelUrl, type Level } from './salon';
 import { SKIN_TONES, type SkinToneId, skinToneOf } from './skin';
 import { FIRST_STICKERS, withRecentSticker } from './recentStickers';
 import type { DrawingTool } from './ToolIcon';
@@ -59,6 +59,10 @@ export interface SalonRound {
   readonly customer: CustomerEntry;
   readonly wish: string;
   readonly checklist: readonly string[];
+  /** How hard the wishes are: the level the player chose, the difficulty of this wish and what happens when a level is chosen. */
+  readonly level: Level;
+  readonly difficulty: number;
+  readonly onLevelChange: (level: Level) => void;
   readonly onDone: () => void;
   /** Set after "Klaar": the customer reacts to the stars and `panel` (the result) takes the place of the tools. */
   readonly outcome?: { readonly stars: Stars; readonly panel: ReactNode };
@@ -215,7 +219,7 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
       ) : (
       <aside className="tools panel" aria-label="Gereedschap">
         <div className="tools-head">
-          {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} onDone={salon.onDone} />}
+          {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} level={salon.level} difficulty={salon.difficulty} onLevelChange={salon.onLevelChange} onDone={salon.onDone} />}
           {!salon && (
           <DesignsMenu
             design={design}

@@ -1,3 +1,4 @@
+import { type Difficulty, MAX_DIFFICULTY, type Stars } from '../core';
 import type { CustomerEntry } from '../scene/customerManifest';
 import { parseManifest } from '../scene/customerManifest';
 
@@ -21,4 +22,13 @@ export async function loadCustomers(fetcher: typeof fetch = (input, init) => fet
 /** URL of the model of a customer. */
 export function customerModelUrl(customer: CustomerEntry): string {
   return `${import.meta.env.BASE_URL}assets/customers/${customer.file}`;
+}
+
+/** How hard the wishes are: chosen by the player, or 'auto' to climb by itself. */
+export type Level = 'auto' | Difficulty;
+
+/** The difficulty of the next wish: a chosen level stays; on 'auto' it goes up by one after a round of at least 2 stars. */
+export function nextDifficulty(level: Level, current: Difficulty, best: Stars): Difficulty {
+  if (level !== 'auto') return level;
+  return best >= 2 ? (Math.min(MAX_DIFFICULTY, current + 1) as Difficulty) : current;
 }
