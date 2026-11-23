@@ -44,8 +44,8 @@ export function SalonResult({ customer, wish, result, best, onSave, onRetry, onN
       <p className="salon-wish">“{REACTIONS[result.stars]}”</p>
       <ul className="salon-checklist salon-marks">
         {result.results.map(({ requirement, score }) => (
-          <li key={checklistLine(requirement, limit)}>
-            {resultMark(score)} {checklistLine(requirement, limit)}
+          <li key={checklistLine(requirement, limit, wish.part)}>
+            {resultMark(score)} {checklistLine(requirement, limit, wish.part)}
           </li>
         ))}
       </ul>
