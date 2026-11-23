@@ -6,7 +6,7 @@ import { type Difficulty, lengthLimit, partDigits, type Requirement, validateWis
 type Kind = Requirement['kind'];
 
 /** The requirements every wish can draw from. */
-const BASE_KINDS = ['colorFamily', 'finish', 'shape', 'french'] as const satisfies readonly Kind[];
+const BASE_KINDS = ['colorFamily', 'finish', 'shape', 'french', 'sponge'] as const satisfies readonly Kind[];
 const DECORATION_KINDS = ['stickers', 'gems'] as const satisfies readonly Kind[];
 
 /** Stickers a customer names; the rest of the library is too hard to ask for in words. */
@@ -54,6 +54,8 @@ function makeRequirement(random: Random, part: WishPart, kind: Kind, scope: Requ
       return { kind, scope, shape: pickOne(random, part === 'hand' ? NAIL_SHAPES : TOE_SHAPES) };
     case 'french':
       return { kind, scope, on: true };
+    case 'sponge':
+      return random() < 0.5 ? { kind, scope, family: pickOne(random, COLOR_FAMILIES) } : { kind, scope };
     case 'length': {
       const limit = lengthLimit(part);
       return random() < 0.5 ? { kind, scope, max: 0.4 * limit } : { kind, scope, min: 0.6 * limit };

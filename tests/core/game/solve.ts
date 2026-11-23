@@ -1,4 +1,4 @@
-import { apply, type ColorFamily, type Command, createDesign, type Design, type Gem, type NailScope, type Requirement, type Sticker, type Wish, lengthLimit } from '../../../src/core';
+import { apply, type ColorFamily, type Command, createDesign, type Design, type Gem, type NailScope, type Requirement, type Sticker, type Stroke, type Wish, lengthLimit } from '../../../src/core';
 
 /** A colour that lies well inside each family. */
 export const CANONICAL_COLORS: Readonly<Record<ColorFamily, string>> = {
@@ -36,6 +36,10 @@ function commandsFor(part: Wish['part'], requirement: Requirement): Command[] {
     }
     case 'french':
       return [{ type: 'setFrench', target: at, french: requirement.on ? { color: '#ffffff', depth: 0.2 } : null }];
+    case 'sponge': {
+      const stroke: Stroke = { color: CANONICAL_COLORS[requirement.family ?? 'pink'], size: 0.3, erase: false, points: [0.5, 0.4, 0.5, 0.6], sponge: { seed: 1, opacity: 0.4 } };
+      return [{ type: 'addStroke', target: at, stroke }];
+    }
     case 'stickers':
       return Array.from({ length: requirement.min }, (_, index): Command => {
         const sticker: Sticker = { id: `s${index}`, kind: requirement.kinds?.[0] ?? 'heart', color: '#ffffff', x: 0.5, y: 0.2 + index * 0.2, size: 0.2, rotation: 0 };

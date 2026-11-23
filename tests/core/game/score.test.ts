@@ -1,9 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { apply, type Command, createDesign, type Design, scoreWish, type Sticker, type Wish } from '../../../src/core';
+import { apply, type Command, createDesign, type Design, scoreWish, type Sticker, type Stroke, type Wish } from '../../../src/core';
 
 const handWish = (...requirements: Wish['requirements']): Wish => ({ part: 'hand', difficulty: 1, requirements });
 const play = (design: Design, ...commands: Command[]) => commands.reduce(apply, design);
 const sticker = (id: string, kind: Sticker['kind'] = 'heart'): Sticker => ({ id, kind, color: '#ffffff', x: 0.5, y: 0.5, size: 0.3, rotation: 0 });
+
+const dab = (color: string, sponge = true): Stroke => ({ color, size: sponge ? 0.3 : 0.1, erase: false, points: [0.5, 0.5], ...(sponge && { sponge: { seed: 1, opacity: 0.4 } }) });
+
+describe('scoring a sponge wish', () => {
+  it('wants a sponge stroke, and a plain brush stroke does not count', () => {
+    const wish = handWish({ kind: 'sponge', scope: 'index' });
+    const stroke = (stroke: Stroke) => scoreWish(wish, play(createDesign('T'), { type: 'addStroke', target: 'index', stroke })).score;
+    expect(scoreWish(wish, createDesign('T')).score).toBe(0);
+    expect(stroke(dab('#ff69b4', false))).toBe(0);
+    expect(stroke(dab('#ff69b4'))).toBe(1);
+  });
+
+  it('with a colour wants the sponge in that colour, half for a neighbouring one', () => {
+    const wish = handWish({ kind: 'sponge', scope: 'index', family: 'blue' });
+    const stroke = (color: string) => scoreWish(wish, play(createDesign('T'), { type: 'addStroke', target: 'index', stroke: dab(color) })).score;
+    expect(stroke('#2060e0')).toBe(1);
+    expect(stroke('#ff8000')).toBe(0);
+  });
+});
 
 describe('scoring a wish', () => {
   it('gives no points for a design that does none of it, and all for one that does', () => {
