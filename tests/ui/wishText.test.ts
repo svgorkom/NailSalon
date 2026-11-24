@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateWish } from '../../src/core';
-import { checklistLine, requirementText, resultMark, starsText, wishText } from '../../src/ui/wishText';
+import { checklistLine, requirementText, resultMark, starsText, wishOpener } from '../../src/ui/wishText';
 
 describe('requirementText', () => {
   it('describes each kind of requirement', () => {
@@ -23,20 +22,11 @@ describe('requirementText', () => {
   });
 });
 
-describe('wishText', () => {
-  it('is the same for the same wish and customer, and names every requirement', () => {
-    const wish = generateWish(7, 'hand', 3);
-    const text = wishText(wish, 'emma', 1);
-    expect(wishText(wish, 'emma', 1)).toBe(text);
-    expect(text.endsWith('.')).toBe(true);
-    for (const requirement of wish.requirements) expect(text).toContain(requirementText(requirement, 1));
-  });
-
-  it('is written for every seed and difficulty without a missing word', () => {
-    for (let seed = 0; seed < 200; seed++) {
-      for (const difficulty of [1, 2, 3, 4, 5] as const) {
-        expect(wishText(generateWish(seed, 'hand', difficulty), 'mei', 1)).not.toMatch(/undefined|\[object/);
-      }
+describe('wishOpener', () => {
+  it('is the same for the same customer, and always ends in a colon', () => {
+    for (const id of ['emma', 'mei', 'ria', 'lotte', 'noor', 'fatima']) {
+      expect(wishOpener(id)).toBe(wishOpener(id));
+      expect(wishOpener(id)).toMatch(/[^:]:$/);
     }
   });
 });

@@ -1,4 +1,4 @@
-import type { ColorFamily, Requirement, Stars, Wish } from '../core';
+import type { ColorFamily, Requirement, Stars } from '../core';
 import { DIGIT_LABELS, FINISH_LABELS, GEM_LABELS, SHAPE_LABELS, STICKER_LABELS } from './labels';
 
 const COLOR_NAMES: Readonly<Record<ColorFamily, string>> = {
@@ -23,7 +23,6 @@ const FINISH_PHRASES: Readonly<Record<keyof typeof FINISH_LABELS, string>> = {
   chrome: 'in chroom',
 };
 
-/** Where a customer starts her wish. Which one she uses depends on who she is, so the same customer always talks the same way. */
 const OPENERS = ['Hoi! Ik wil graag', 'Kun jij voor mij maken:', 'Ik hoop dat je dit kunt:', 'Fijn dat je er bent! Ik wil graag'] as const;
 
 /** "alle nagels" or "de ringvinger". */
@@ -71,12 +70,10 @@ export function checklistLine(requirement: Requirement, lengthLimit: number): st
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** The wish as a short friendly text, from the requirements only. `customerId` picks her way of starting. */
-export function wishText(wish: Wish, customerId: string, lengthLimit: number): string {
+/** How the customer starts her wish, ending in a colon: the requirements follow as a list. Which opener she uses depends on who she is. */
+export function wishOpener(customerId: string): string {
   const opener = OPENERS[[...customerId].reduce((sum, char) => sum + char.charCodeAt(0), 0) % OPENERS.length] ?? OPENERS[0];
-  const parts = wish.requirements.map((requirement) => requirementText(requirement, lengthLimit));
-  const list = parts.length === 1 ? (parts[0] ?? '') : `${parts.slice(0, -1).join(', ')} en ${parts[parts.length - 1] ?? ''}`;
-  return `${opener} ${list}.`;
+  return `${opener.replace(/:$/, '')}:`;
 }
 
 /** What the customer says about the result. */
