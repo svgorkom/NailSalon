@@ -1720,9 +1720,19 @@ fieldset.bare {
 .salon-bar { display: grid; gap: 0.5rem; }
 .salon-name { margin: 0; font-size: 1.25rem; }
 .salon-wish { margin: 0; font-style: italic; }
-.salon-level { display: grid; gap: 0.25rem; font-size: 0.9rem; }
-.salon-level-buttons { display: flex; flex-wrap: wrap; gap: 0.25rem; }
-.salon-level-buttons .choice { min-width: 2.2rem; padding: 0.3rem 0.5rem; }
+.salon-level { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.9rem; }
+.salon-level select { font: inherit; padding: 0.35rem 0.5rem; min-width: 8rem; }
+/*
+ * In the salon the head (customer, wish, camera) is long: on a low window it left no room for the tools below and, being fixed, could not
+ * be scrolled. So the whole panel scrolls as one, at every size, and Klaar stays at the bottom of it.
+ */
+.salon-tools { overflow-y: auto; overscroll-behavior: contain; }
+.salon-tools .tools-head,
+.salon-tools .tools-body { flex: none; }
+.salon-tools .tools-body { overflow: visible; }
+.salon-tools .pad { position: static; }
+.salon-footer { position: sticky; bottom: 0; z-index: 2; padding: 0.5rem 1rem 0.6rem; margin-top: auto; background: var(--panel-bottom); border-top: 1px solid rgba(var(--accent-rgb), 0.35); }
+.salon-footer .salon-done { width: 100%; }
 .salon-done { font-size: 1.1rem; padding: 0.6rem 1rem; }
 .salon-checklist { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
 .salon-result { display: grid; gap: 0.75rem; align-content: start; }

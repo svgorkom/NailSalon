@@ -10,7 +10,7 @@ import { loadSkin, saveSkin } from './skin';
 import { salonEnabled } from './flags';
 import { type Level, loadCustomers, nextCustomer, nextDifficulty } from './salon';
 import { SalonResult } from './SalonResult';
-import { checklistLine, wishText } from './wishText';
+import { checklistLine, wishOpener } from './wishText';
 import { MainMenu, type MenuChoice } from './MainMenu';
 import { StartScreen } from './StartScreen';
 import { loadTheme, saveTheme } from './theme';
@@ -114,7 +114,7 @@ export function App() {
             {...(salon && {
               salon: {
                 customer: salon.customer,
-                wish: wishText(salon.wish, salon.customer.id, lengthLimit(salon.wish.part)),
+                wish: wishOpener(salon.customer.id),
                 checklist: salon.wish.requirements.map((requirement) => checklistLine(requirement, lengthLimit(salon.wish.part))),
                 level: salon.level,
                 difficulty: salon.difficulty,

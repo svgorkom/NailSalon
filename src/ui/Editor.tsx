@@ -217,9 +217,9 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
           {salon.outcome.panel}
         </aside>
       ) : (
-      <aside className="tools panel" aria-label="Gereedschap">
+      <aside className={salon ? 'tools panel salon-tools' : 'tools panel'} aria-label="Gereedschap">
         <div className="tools-head">
-          {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} level={salon.level} difficulty={salon.difficulty} onLevelChange={salon.onLevelChange} onDone={salon.onDone} />}
+          {salon && <SalonBar customer={salon.customer} wish={salon.wish} checklist={salon.checklist} view={salonView} onViewChange={setSalonView} level={salon.level} difficulty={salon.difficulty} onLevelChange={salon.onLevelChange} />}
           {!salon && (
           <DesignsMenu
             design={design}
@@ -446,6 +446,13 @@ export function Editor({ part, salon, history, dispatch, theme, onThemeChange, s
             </fieldset>
           </details>
         </div>
+        {salon && (
+          <div className="salon-footer">
+            <button type="button" className="salon-done" onClick={salon.onDone}>
+              ✅ Klaar
+            </button>
+          </div>
+        )}
       </aside>
       )}
     </div>
